@@ -7,7 +7,7 @@ import type {
 	ExtensionAPI,
 	ExtensionCommandContext,
 } from "@earendil-works/pi-coding-agent";
-import { withWorktreeLock } from "@henryqw/pi-herdr";
+import { withWorktreeLock } from "@csubj/pi-herdr";
 import herdrDoneExtension from "../internal/done.ts";
 
 type Command = (args: string, ctx: ExtensionCommandContext) => Promise<void>;

@@ -566,7 +566,7 @@ The package exports:
 | `prepareExactReviewEvidence` | Produce bounded private base-to-tip evidence |
 | checked runner exports | Compose strict schemas, state, Git, Herdr, and launch runtimes |
 
-Package callers must register their Model Task once with `@henryqw/pi-task-models`. `resolveRoleLaunch` applies call-level model class, then Role default, then the registered task route. `resolveConfiguredRoleLaunch` requires the class explicitly. Missing Skills reject before launch.
+Package callers must register their Model Task once with `@csubj/pi-task-models`. `resolveRoleLaunch` applies call-level model class, then Role default, then the registered task route. `resolveConfiguredRoleLaunch` requires the class explicitly. Missing Skills reject before launch.
 
 Worktree finalization returns one of:
 

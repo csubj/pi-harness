@@ -12,7 +12,7 @@ Pi users who want to discover, evaluate, and install focused extensions for agen
 
 ## Product Purpose
 
-Henry Pi Harness is a documentation site and installer for a curated set of Pi extensions and their support libraries. It helps users find the right extensions, understand how they fit together, and install all or a selected subset.
+csubj Pi Harness is a documentation site and installer for a curated set of Pi extensions and their support libraries. It helps users find the right extensions, understand how they fit together, and install all or a selected subset.
 
 ## Positioning
 
@@ -20,20 +20,20 @@ The site derives extension documentation from the packages' canonical READMEs an
 
 ## Operating Context
 
-Users browse static documentation at `pi.henry.wang` and install extensions from a shell. The installer sets up missing Pi and Herdr commands. It reports installed versions and asks before available updates. It then installs the selected Pi extensions. The default selection is every installable extension.
+Users browse the documentation in the GitHub repository `csubj/pi-harness` and install extensions from a shell. The installer sets up missing Pi and Herdr commands. It reports installed versions and asks before available updates. It then installs the selected Pi extensions. The default selection is every installable extension.
 
 ## Capabilities and Constraints
 
 - The website uses Blume, Astro, and TypeScript with static output.
 - Root and package READMEs remain the documentation source of truth.
-- Public extension manifests with Pi metadata define the installer package list. Deprecated packages and non-extension support libraries are excluded.
+- Public extension manifests with Pi metadata define the installer package list. Non-extension support libraries are excluded.
 - Package names, descriptions, and relationship language must remain canonical and traceable to repository sources.
 - Discovery focuses on end-user extensions. Author infrastructure remains outside the primary discovery flow.
 
 ## Brand Commitments
 
-- Product name: Henry Pi Harness.
-- Preserve the Pi, Herdr, and Henry identity where it has product meaning.
+- Product name: csubj Pi Harness.
+- Preserve the Pi, Herdr, and csubj identity where it has product meaning.
 - Use concise, engineering-oriented language.
 - Do not invent performance claims, product capabilities, or customer proof.
 

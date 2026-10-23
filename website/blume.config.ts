@@ -61,7 +61,7 @@ const readDoc = async ({ editPath, npm, path }: (typeof docs)[number]) => {
   const npmUrl = `https://www.npmjs.com/package/${npm.name}`;
   const badgeUrl = npmBadgeUrl(npm.name).replaceAll("&", "&amp;");
   const versionBadge = versionBadgeUrl(npm.version).replaceAll("&", "&amp;");
-  const licenseUrl = `https://github.com/HenryQW/pi-harness/blob/main/${editPath.replace(/README\.md$/, "LICENSE")}`;
+  const licenseUrl = `https://github.com/csubj/pi-harness/blob/main/${editPath.replace(/README\.md$/, "LICENSE")}`;
   const licenseBadge = licenseBadgeUrl(npm.name).replaceAll("&", "&amp;");
   const stats = `<div class="not-prose my-6 flex flex-wrap items-center gap-3"><a href="${npmUrl}" aria-label="View ${npm.name} version v${npm.version} on npm"><img alt="Version v${npm.version}" height="20" src="${versionBadge}" width="96"></a><div class="ml-auto flex flex-wrap items-center justify-end gap-3"><a href="${npmUrl}" aria-label="View ${npm.name} on npm"><img alt="Monthly npm downloads" height="20" src="${badgeUrl}" width="144"></a><a href="${licenseUrl}" aria-label="View the MIT license for ${npm.name}"><img alt="MIT license" height="20" src="${licenseBadge}" width="78"></a></div></div>`;
   const linkedText = linkRelativeMarkdownToGitHub(text, editPath);
@@ -79,7 +79,7 @@ const packageDocs: ContentSource = {
         return {
           body: { format: "md" as const, text },
           data,
-          editUrl: `https://github.com/HenryQW/pi-harness/edit/main/${editPath}`,
+          editUrl: `https://github.com/csubj/pi-harness/edit/main/${editPath}`,
           raw,
           ref,
           slug,
@@ -95,25 +95,24 @@ const packageDocs: ContentSource = {
 };
 
 export default defineConfig({
-  title: "Henry Pi Harness",
+  title: "csubj Pi Harness",
   description: "Opinionated Pi extensions for memory, delegation, Git, model routing, and interaction.",
   feedback: false,
   footer: {
     links: [
-      { label: "npm profile", href: "https://www.npmjs.com/~henryqw" },
-      { label: "MIT License", href: "https://github.com/HenryQW/pi-harness/blob/main/LICENSE" },
-      { label: "About Henry", href: "https://henry.wang" },
+      { label: "npm profile", href: "https://www.npmjs.com/~csubj" },
+      { label: "MIT License", href: "https://github.com/csubj/pi-harness/blob/main/LICENSE" },
     ],
   },
-  logo: { image: "/favicon.ico", text: "Henry Pi Harness" },
+  logo: { image: "/favicon.ico", text: "csubj Pi Harness" },
   content: {
     sources: [custom(packageDocs)],
   },
   deployment: {
-    site: "https://pi.henry.wang",
+    site: "https://github.com/csubj/pi-harness",
   },
   github: {
-    owner: "HenryQW",
+    owner: "csubj",
     repo: "pi-harness",
     dir: "website",
   },
@@ -134,26 +133,6 @@ export default defineConfig({
   },
   redirects: [
     {
-      from: "/extensions/pi-herdr-btw",
-      to: "/extensions/pi-herdr-tools",
-    },
-    {
-      from: "/extensions/pi-herdr-clone",
-      to: "/extensions/pi-herdr-tools",
-    },
-    {
-      from: "/extensions/pi-herdr-rename",
-      to: "/extensions/pi-herdr-tools",
-    },
-    {
-      from: "/extensions/pi-herdr-done",
-      to: "/extensions/pi-herdr-tools",
-    },
-    {
-      from: "/extensions/pi-open-in",
-      to: "/extensions/pi-footer",
-    },
-    {
       from: "/extensions/pi-config-store",
       to: "/packages/pi-config-store",
     },
@@ -162,18 +141,14 @@ export default defineConfig({
       to: "/packages/pi-herdr",
     },
     {
-      from: "/deprecated",
-      to: "https://github.com/HenryQW/pi-harness/tree/main/deprecated",
-    },
-    {
       from: "/docs/releasing",
-      to: "https://github.com/HenryQW/pi-harness/blob/main/docs/releasing.md",
+      to: "https://github.com/csubj/pi-harness/blob/main/docs/releasing.md",
     },
   ],
   search: orama(),
   seo: {
     og: {
-      description: "Built on Pi. Tuned by Henry.",
+      description: "Built on Pi. Tuned by csubj.",
       logo: "/og-logo.svg",
       palette: {
         accent: "oklch(0.488 0.217 264.4)",

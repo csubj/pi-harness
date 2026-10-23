@@ -1,13 +1,13 @@
-# `@henryqw/pi-footer`
+# `@csubj/pi-footer`
 
 Keep footer identity, model usage, agent-work time, and extension status visible in Pi. Enable the footer and open commands independently.
 
-![Pi footer showing repository, pull request, quota, usage, model, and extension status](./example.png)
+![Pi footer showing repository, quota, usage, model, and extension status](./example.png)
 
 ## Install
 
 ```bash
-pi install npm:@henryqw/pi-footer
+pi install npm:@csubj/pi-footer
 ```
 
 Both entry points load by default. To select only the open commands, use Pi's resource filter in `settings.json`:
@@ -16,7 +16,7 @@ Both entry points load by default. To select only the open commands, use Pi's re
 {
   "packages": [
     {
-      "source": "npm:@henryqw/pi-footer",
+      "source": "npm:@csubj/pi-footer",
       "extensions": ["extensions/open.ts"]
     }
   ]
@@ -29,11 +29,10 @@ Select `extensions/footer.ts` for only the footer, or use `pi config` to toggle 
 
 | Package | Relationship | Purpose |
 | --- | --- | --- |
-| [`@henryqw/pi-codegraph`](https://pi.henry.wang/extensions/pi-codegraph) | Improves | Shows CodeGraph index status, quiet setup progress, and direct tool activity when loaded. |
-| [`@henryqw/pi-config-store`](https://pi.henry.wang/packages/pi-config-store) | Required | Owns config-home resolution and storage. |
-| [`@henryqw/pi-multi-codex`](https://pi.henry.wang/extensions/pi-multi-codex) | Improves | Adds active Codex subscription quota and reset status. |
-| [`@henryqw/pi-pr`](https://pi.henry.wang/extensions/pi-pr) | Improves | Adds current-branch pull-request status. |
-| [`@henryqw/pi-subagent`](https://pi.henry.wang/extensions/pi-subagent) | Improves | Adds completed background workflow usage to the token and cost totals. |
+| [`@csubj/pi-codegraph`](https://github.com/csubj/pi-harness/tree/main/extensions/pi-codegraph) | Improves | Shows CodeGraph index status, quiet setup progress, and direct tool activity when loaded. |
+| [`@csubj/pi-config-store`](https://github.com/csubj/pi-harness/tree/main/packages/pi-config-store) | Required | Owns config-home resolution and storage. |
+| [`@csubj/pi-multi-codex`](https://github.com/csubj/pi-harness/tree/main/extensions/pi-multi-codex) | Improves | Adds active Codex subscription quota and reset status. |
+| [`@csubj/pi-subagent`](https://github.com/csubj/pi-harness/tree/main/extensions/pi-subagent) | Improves | Adds completed background workflow usage to the token and cost totals. |
 
 ## Use
 
@@ -51,7 +50,7 @@ Start a Pi TUI session to see the footer. Run `/open` to open the current direct
 
 | Line | Left | Right |
 | --- | --- | --- |
-| First | Repository, branch, Git state, and `pi-pr` pull-request status. Linked-worktree branches omit the generated `worktree/` prefix. | Non-empty `pi-multi-codex` family status. |
+| First | Repository, branch, and Git state. Linked-worktree branches omit the generated `worktree/` prefix. | Non-empty `pi-multi-codex` family status. |
 | Second: usage line | Input and output token totals, latest cache-hit rate, response throughput, estimated cost, and context use. | Active model and thinking level. |
 | Third | CodeGraph first, then other extension statuses sorted by key, including Ponytail and `pi-rewind`. | Cumulative agent-work time. |
 
@@ -61,7 +60,7 @@ Virtual models show the latest successful physical model and thinking level afte
 
 Thinking colors are dim grey for `off` and the model name, then green `minimal`, yellow-green `low`, lime `medium`, yellow `high`, orange `xhigh`, and red `max`. Active levels use ANSI-256 colors. `ultra` uses a rainbow only when the runtime supports it; unsupported levels do not appear.
 
-For CodeGraph badges, see [`@henryqw/pi-codegraph`](https://pi.henry.wang/extensions/pi-codegraph).
+For CodeGraph badges, see [`@csubj/pi-codegraph`](https://github.com/csubj/pi-harness/tree/main/extensions/pi-codegraph).
 
 Other dependency statuses, such as `⠋ deps · installing 12s`, disappear after completion. Middle dots separate statuses. The footer preserves colors, links, glyphs, and interior spacing, trims outer whitespace, replaces line breaks with spaces, and shortens long statuses.
 
@@ -138,7 +137,7 @@ Theme tokens: `accent`, `dim`, `muted`, `text`, `success`, `warning`, `error`, a
 Consumers must use the owner API, not read config directly:
 
 ```ts
-import { loadOpenInConfig } from "@henryqw/pi-footer/open-uri";
+import { loadOpenInConfig } from "@csubj/pi-footer/open-uri";
 
 const loaded = loadOpenInConfig();
 if (loaded.status === "ok") console.log(loaded.value.command, loaded.issues);
@@ -151,7 +150,7 @@ if (loaded.status === "ok") console.log(loaded.value.command, loaded.issues);
 | `loadOpenInConfig(agentDir?)` | function | Reads and validates owner config; accepts an optional agent directory. |
 | `configuredOpenUri(path)` | function | Returns a safe VS Code URI for `code`, or `undefined` for other commands. |
 
-`loadOpenInConfig` returns a `@henryqw/pi-config-store` `ConfigLoad`: `status`, `source` (`"missing"` or `"file"`), `issues`, and `value` when `status` is `"ok"`. Invalid `value.command` gives `"code"` and an issue. Neither function shows notifications. `configuredOpenUri(path)` uses `code` for invalid config; `code -n` and `code --new-window` add `windowId=_blank`.
+`loadOpenInConfig` returns a `@csubj/pi-config-store` `ConfigLoad`: `status`, `source` (`"missing"` or `"file"`), `issues`, and `value` when `status` is `"ok"`. Invalid `value.command` gives `"code"` and an issue. Neither function shows notifications. `configuredOpenUri(path)` uses `code` for invalid config; `code -n` and `code --new-window` add `windowId=_blank`.
 
 ## Limits and recovery
 

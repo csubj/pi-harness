@@ -1,8 +1,8 @@
 import { readFile } from "node:fs/promises";
 import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
 
-const repository = new URL("https://github.com/HenryQW/pi-harness/blob/main/");
-const rawRepository = new URL("https://raw.githubusercontent.com/HenryQW/pi-harness/main/");
+const repository = new URL("https://github.com/csubj/pi-harness/blob/main/");
+const rawRepository = new URL("https://raw.githubusercontent.com/csubj/pi-harness/main/");
 
 export const inlineRelativeSvgImages = async (
   markdown: string,

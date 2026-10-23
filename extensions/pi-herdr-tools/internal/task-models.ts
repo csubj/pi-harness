@@ -5,7 +5,7 @@ import {
 	type ModelTask,
 	type ResolvedTaskRoute,
 	type TaskRouteError,
-} from "@henryqw/pi-task-models";
+} from "@csubj/pi-task-models";
 
 // Pi reloads extensions without a module cache, so process state keeps the warning once per session.
 const WARNED_SESSION = Symbol.for("pi-herdr-tools/task-models-warned-session");

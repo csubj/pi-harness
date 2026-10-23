@@ -1,6 +1,6 @@
 {
-  "name": "@henryqw/pi-notes",
-  "version": "3.2.2",
+  "name": "@csubj/pi-notes",
+  "version": "3.2.3",
   "description": "Persistent notes in a Pi widget, managed with /note commands.",
   "keywords": [
     "pi-package",
@@ -30,11 +30,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/HenryQW/pi-harness.git",
+    "url": "git+https://github.com/csubj/pi-harness.git",
     "directory": "extensions/pi-notes"
   },
   "bugs": {
-    "url": "https://github.com/HenryQW/pi-harness/issues"
+    "url": "https://github.com/csubj/pi-harness/issues"
   },
   "publishConfig": {
     "access": "public"
@@ -43,10 +43,10 @@
     "extensions": [
       "./extensions/notes.ts"
     ],
-    "image": "https://raw.githubusercontent.com/HenryQW/pi-harness/main/extensions/pi-notes/example.png"
+    "image": "https://raw.githubusercontent.com/csubj/pi-harness/main/extensions/pi-notes/example.png"
   },
   "dependencies": {
-    "@henryqw/pi-config-store": "^4.0.0"
+    "@csubj/pi-config-store": "^4.0.0"
   },
   "devDependencies": {
     "@earendil-works/pi-coding-agent": "1.3.0",

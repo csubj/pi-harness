@@ -1,7 +1,7 @@
 import { StringEnum } from "@earendil-works/pi-ai";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { spawnBounded } from "@henryqw/pi-process";
-import { ROLE_TOOL_POLICY_FLAG, roleToolPolicyFromArgv } from "@henryqw/pi-subagent";
+import { spawnBounded } from "@csubj/pi-process";
+import { ROLE_TOOL_POLICY_FLAG, roleToolPolicyFromArgv } from "@csubj/pi-subagent";
 import { Type, type Static } from "typebox";
 import { Check } from "typebox/value";
 

@@ -1,5 +1,5 @@
 ---
-name: Henry Pi Harness
+name: csubj Pi Harness
 description: Personal, documentation-first catalogue for focused Pi extensions.
 colors:
   paper: "oklch(0.949 0.007 88.6)"
@@ -143,13 +143,13 @@ components:
     padding: "{spacing.card}"
 ---
 
-# Design System: Henry Pi Harness
+# Design System: csubj Pi Harness
 
 ## Overview
 
 **Creative North Star: "The Personal Engineering Notebook"**
 
-Henry Pi Harness pairs a warm paper canvas with ink-navy type and a single utility-blue accent. It is a proof-driven place for serious Pi tooling. Concise sans type, monospaced package names, and thin rules keep it exact.
+csubj Pi Harness pairs a warm paper canvas with ink-navy type and a single utility-blue accent. It is a proof-driven place for serious Pi tooling. Concise sans type, monospaced package names, and thin rules keep it exact.
 
 The interface is intentionally quiet. It uses flat, bordered surfaces and sparse color to support scanning instead of treating a documentation catalogue like a marketing campaign. Dark mode keeps the same hierarchy on a deep navy work surface.
 
@@ -274,7 +274,7 @@ Use the shared `0.25rem` radius for buttons, cards, and compact controls. Use `9
 - **Brand:** Use the configured `favicon.ico` at `1.25rem`, followed by the product name.
 - **Search:** Use Blume's outlined pill trigger. Show only the icon below `64rem`; show `Search` and `⌘K` at larger widths.
 - **Actions:** Use Blume's native theme icon button. The header has no GitHub action.
-- **Footer:** Use Blume's native `SiteFooter` on all pages. Configure `footer.links` for npm profile, MIT License, and About Henry. The existing `github` configuration supplies one repository icon in the footer. Do not add a duplicate GitHub link or a custom footer.
+- **Footer:** Use Blume's native `SiteFooter` on all pages. Configure `footer.links` for npm profile and MIT License. The existing `github` configuration supplies one repository icon in the footer. Do not add a duplicate GitHub link or a custom footer.
 
 ### Extension Card
 

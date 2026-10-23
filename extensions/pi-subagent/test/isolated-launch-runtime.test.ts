@@ -237,8 +237,8 @@ test("default correlation tokens contain 96 bits as 24 lowercase hex characters"
 test("preflight registers its Model Task and resolves each distinct explicit Role/model class including judgments", async (t) => {
 	const fixture = await harness(t);
 	const discovered: unknown[] = [];
-	fixture.events.on("@henryqw/pi-task-models:model-task-response", (value) => discovered.push(value));
-	fixture.events.emit("@henryqw/pi-task-models:model-task-request", { requestId: "request-12345678" });
+	fixture.events.on("@csubj/pi-task-models:model-task-response", (value) => discovered.push(value));
+	fixture.events.emit("@csubj/pi-task-models:model-task-request", { requestId: "request-12345678" });
 	assert.deepEqual((discovered[0] as { task: unknown }).task, ISOLATED_MODEL_TASK);
 
 	await fixture.setRole("author.md", { name: "change author" });

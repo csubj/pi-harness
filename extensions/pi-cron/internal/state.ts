@@ -1,6 +1,6 @@
 import { mkdir } from "node:fs/promises";
 import { dirname, isAbsolute } from "node:path";
-import { readTextFileBoundedSync, writePrivateTextFileAtomically } from "@henryqw/pi-config-store";
+import { readTextFileBoundedSync, writePrivateTextFileAtomically } from "@csubj/pi-config-store";
 import { lock } from "proper-lockfile";
 import { JOB_ID } from "./config.ts";
 import { dueAt, type Schedule } from "./schedule.ts";

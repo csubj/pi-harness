@@ -3,7 +3,7 @@ import { constants } from "node:fs";
 import { lstat, mkdir, open, realpath, rmdir, unlink } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, resolve, sep } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
-import { extensionConfigDir } from "@henryqw/pi-config-store";
+import { extensionConfigDir } from "@csubj/pi-config-store";
 import {
 	createHerdrClient,
 	hasHerdrErrorCode,
@@ -11,7 +11,7 @@ import {
 	startPiAgent,
 	type HerdrClient,
 	type HerdrExecResult,
-} from "@henryqw/pi-herdr";
+} from "@csubj/pi-herdr";
 import {
 	isCleanCommitted,
 	type AgentAllocationIntent,

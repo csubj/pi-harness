@@ -1,5 +1,5 @@
 import { createMcpExtension, getAgentDir, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { loadRoleMcpConfig, roleActivatesCodemode, roleMcpAllowlistFromArgv, ROLE_MCP_POLICY_FLAG, roleToolPolicyFromArgv } from "@henryqw/pi-subagent";
+import { loadRoleMcpConfig, roleActivatesCodemode, roleMcpAllowlistFromArgv, ROLE_MCP_POLICY_FLAG, roleToolPolicyFromArgv } from "@csubj/pi-subagent";
 
 export default function roleMcp(pi: ExtensionAPI): void | Promise<void> {
 	pi.registerFlag(ROLE_MCP_POLICY_FLAG, {

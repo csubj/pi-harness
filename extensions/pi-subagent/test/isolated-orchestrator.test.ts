@@ -7,7 +7,7 @@ import test from "node:test";
 import { Check } from "typebox/value";
 import type { ExtensionAPI, ExtensionContext, Theme } from "@earendil-works/pi-coding-agent";
 import { visibleWidth, type Component, type TUI } from "@earendil-works/pi-tui";
-import { ROLE_TOOL_POLICY_FLAG } from "@henryqw/pi-subagent";
+import { ROLE_TOOL_POLICY_FLAG } from "@csubj/pi-subagent";
 import {
 	createIsolatedComponents,
 	registerIsolatedExtension,
@@ -1556,8 +1556,8 @@ test("manifest entrypoint and Main-side Skill ship with the unified tools", asyn
 		files?: string[];
 		pi?: { extensions?: string[]; skills?: string[] };
 	};
-	assert.equal(manifest.dependencies?.["@henryqw/pi-subagent"], undefined);
-	assert.equal(manifest.dependencies?.["@henryqw/pi-herdr"], "^0.5.0");
+	assert.equal(manifest.dependencies?.["@csubj/pi-subagent"], undefined);
+	assert.equal(manifest.dependencies?.["@csubj/pi-herdr"], "^0.5.0");
 	assert.deepEqual(manifest.pi?.extensions, ["./extensions/subagent.ts"]);
 	assert.deepEqual(manifest.pi?.skills, ["./skills"]);
 	for (const path of ["README.md", "CONTEXT.md", "skills"]) assert.ok(manifest.files?.includes(path));
@@ -1597,7 +1597,6 @@ test("root active delegation sources smoke-load only the unified delegation tool
 	const active = rootManifest.pi?.extensions ?? [];
 	assert.equal(active.filter((source) => source.includes("pi-subagent")).length, 1);
 	assert.ok(active.includes("./extensions/pi-subagent/extensions/subagent.ts"));
-	assert.ok(active.every((source) => !source.includes("pi-auto-dag")));
 
 	const agentDir = await mkdtemp(join(tmpdir(), "pi-subagent-smoke-"));
 	const previousAgentDir = process.env.PI_CODING_AGENT_DIR;

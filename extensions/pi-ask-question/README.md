@@ -1,4 +1,4 @@
-# `@henryqw/pi-ask-question`
+# `@csubj/pi-ask-question`
 
 Pause Pi until the user selects a question option with the keyboard or enters a custom answer. Agents and extensions get an explicit answer without parsing free-form chat.
 
@@ -7,7 +7,7 @@ Pause Pi until the user selects a question option with the keyboard or enters a 
 ## Install
 
 ```bash
-pi install npm:@henryqw/pi-ask-question
+pi install npm:@csubj/pi-ask-question
 ```
 
 ## Use
@@ -35,7 +35,7 @@ While a question is open, the tool publishes `herdr:blocked` with `Input require
 
 ## API
 
-Import from the package root, `@henryqw/pi-ask-question`.
+Import from the package root, `@csubj/pi-ask-question`.
 
 | Surface | Type | Purpose |
 | --- | --- | --- |

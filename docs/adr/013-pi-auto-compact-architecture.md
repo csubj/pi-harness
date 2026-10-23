@@ -9,7 +9,7 @@ Automatic compaction must avoid competing lifecycle owners, preserve task contin
 
 ## Decision
 
-- `@henryqw/pi-auto-compact` is the sole automatic compaction owner and refuses activation while Pi's built-in auto-compaction is enabled.
+- `@csubj/pi-auto-compact` is the sole automatic compaction owner and refuses activation while Pi's built-in auto-compaction is enabled.
 - `/auto-compact` configures only the threshold. The `pi-auto-compact/autoCompact` shared task assignment selects primary and fallback routes; if neither is usable, compaction uses the current session model.
 - Overrides affect extension-owned automatic compaction only. Manual `/compact` remains native.
 - A mid-task automatic compaction resumes the current task.

@@ -1,6 +1,6 @@
 # Agent instructions
 
-Keep active repository-specific policy here. ADRs own decisions, agent docs own runbooks, and scripts or workflows enforce checks; fix disagreements at their source. Nested `AGENTS.md` files in `extensions/`, `website/`, `extensions/pi-pr/`, and `extensions/pi-subagent/` add rules for their subtrees.
+Keep active repository-specific policy here. ADRs own decisions, agent docs own runbooks, and scripts or workflows enforce checks; fix disagreements at their source. Nested `AGENTS.md` files in `extensions/`, `website/`, and `extensions/pi-subagent/` add rules for their subtrees.
 
 ## Code exploration
 
@@ -22,7 +22,7 @@ For every published package, runtime imports reachable from its entry points mus
 
 Follow [the release runbook](docs/releasing.md) and `scripts/check-package-versions.mjs` for published-file classification, version choice, lockfile updates, and publishing. Apply required version bumps before the first version check. Run `pnpm run check:package-versions` before the final release commit or any push. Before finishing, state which packages release and why; if none changed, state that CI will not publish.
 
-When you add, remove, or rename an extension, also update the root `package.json` `pi.extensions` list and `CONTEXT-MAP.md`, then regenerate the installer list with `pnpm --filter @henryqw/pi-docs run generate:installer` (`docs:validate` fails when it is stale). When extensions or their internal runtime or peer dependencies change, update `docs/extension-dependencies.html`, `docs/extension-dependencies.svg`, and the root README alt text.
+When you add, remove, or rename an extension, also update the root `package.json` `pi.extensions` list and `CONTEXT-MAP.md`, then regenerate the installer list with `pnpm --filter @csubj/pi-docs run generate:installer` (`docs:validate` fails when it is stale). When extensions or their internal runtime or peer dependencies change, update `docs/extension-dependencies.html`, `docs/extension-dependencies.svg`, and the root README alt text.
 
 For each new public package, check whether it exists on npm before finishing. If npm returns `E404`, explicitly prompt the maintainer with the package name, version, and first-publication/trusted-publisher steps from [the bootstrap checklist](docs/releasing.md#first-publication-checklist). Other lookup failures are blockers, not proof that the package is new. Report bootstrap work as pending; CI cannot perform the first publication. Do not authenticate, publish, or change npm trust settings without an explicit request.
 
@@ -38,7 +38,7 @@ For README/template-only changes, preserve unique guidance and run `pnpm run doc
 
 ## First-party skills
 
-This repository owns [pi-extension-workbench](.agents/skills/pi-extension-workbench/SKILL.md); maintain it here, not in `HenryQW/skills` or `skills-lock.json`. Keep installed Pi docs, examples, and declarations as runtime authority. Validate skill changes with `python3 .agents/skills/pi-extension-workbench/scripts/validate.py`. The repository also owns [extension-sweep](.agents/skills/extension-sweep/SKILL.md) for cross-package optimization, test-pruning, and documentation sweeps, and [automated-pi-extension-dev](.agents/skills/automated-pi-extension-dev/SKILL.md) for Main-led batches with one worker worktree and pull request per extension.
+This repository owns [pi-extension-workbench](.agents/skills/pi-extension-workbench/SKILL.md); maintain it here, not in `skills-lock.json`. Keep installed Pi docs, examples, and declarations as runtime authority. Validate skill changes with `python3 .agents/skills/pi-extension-workbench/scripts/validate.py`. The repository also owns [extension-sweep](.agents/skills/extension-sweep/SKILL.md) for cross-package optimization, test-pruning, and documentation sweeps.
 
 After you change a package skill that has a suite in [evals/](evals/README.md), run `node evals/run.ts --skill <name>` and report the results. Evals call a model, so CI does not run them.
 

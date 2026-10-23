@@ -1,7 +1,7 @@
 import { statSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import { type ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { type ConfigLoad, registerConfigReporting } from "@henryqw/pi-config-store";
+import { type ConfigLoad, registerConfigReporting } from "@csubj/pi-config-store";
 import { createOpenInConfigStore } from "./open-in-config.ts";
 
 export type OpenInConfig = { command: string };

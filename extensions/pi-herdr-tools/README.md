@@ -1,12 +1,12 @@
-# `@henryqw/pi-herdr-tools`
+# `@csubj/pi-herdr-tools`
 
 Clone conversations, hand off tasks, and ask side questions in Herdr. Name conversations, see where idle conversations stopped, and finish worktrees with explicit safety checks.
 
 ## Install
 
 ```sh
-pi install npm:@henryqw/pi-task-models
-pi install npm:@henryqw/pi-herdr-tools
+pi install npm:@csubj/pi-task-models
+pi install npm:@csubj/pi-herdr-tools
 ```
 
 Use Herdr 0.9.3 or later in a Herdr-managed Pi pane. Outside Herdr, rename still sets the Pi session title.
@@ -17,9 +17,9 @@ Configure `fast` in `/task-models`.
 
 | Package | Relationship | Purpose |
 | --- | --- | --- |
-| [`@henryqw/pi-herdr`](https://pi.henry.wang/packages/pi-herdr) | Required | Herdr CLI access. |
-| [`@henryqw/pi-memory`](https://pi.henry.wang/extensions/pi-memory) | Improves | Keeps Main-only memory and dream advice out of side threads. |
-| [`@henryqw/pi-task-models`](https://pi.henry.wang/extensions/pi-task-models) | Required | Model profiles for titles, idle recaps, and side threads. |
+| [`@csubj/pi-herdr`](https://github.com/csubj/pi-harness/tree/main/packages/pi-herdr) | Required | Herdr CLI access. |
+| [`@csubj/pi-memory`](https://github.com/csubj/pi-harness/tree/main/extensions/pi-memory) | Improves | Keeps Main-only memory and dream advice out of side threads. |
+| [`@csubj/pi-task-models`](https://github.com/csubj/pi-harness/tree/main/extensions/pi-task-models) | Required | Model profiles for titles, idle recaps, and side threads. |
 
 ## Use
 
@@ -100,7 +100,7 @@ Idle recaps require an interactive UI. Pi does not start the timer when the edit
 
 Status requires Herdr's installed Pi integration, `~/.pi/agent/extensions/herdr-agent-state.ts`. Select, confirm, input, editor, and custom dialogs from any package count; RPC, JSON, and print modes do not. No dialog title or content goes to Herdr.
 
-Status clears on answer, cancellation, failure, `/reload`, session switch, or exit. Reload can hide dialogs; late events cannot restore status. Nested dialogs count as one block. Other status owners, including `@henryqw/pi-ask-question`, remain independent.
+Status clears on answer, cancellation, failure, `/reload`, session switch, or exit. Reload can hide dialogs; late events cannot restore status. Nested dialogs count as one block. Other status owners, including `@csubj/pi-ask-question`, remain independent.
 
 ## Flow
 
@@ -130,7 +130,7 @@ File and fields are optional. Launch reports unknown keys and invalid values, us
 
 ### Model profiles
 
-See [`@henryqw/pi-task-models`](https://pi.henry.wang/extensions/pi-task-models) for profile defaults, assignments, and config errors.
+See [`@csubj/pi-task-models`](https://github.com/csubj/pi-harness/tree/main/extensions/pi-task-models) for profile defaults, assignments, and config errors.
 
 Side threads select the first authenticated viable route before launch. Titles use the primary route, then fallback, with configured thinking; they never substitute the current session model. An invalid title gets one repair request before fallback. Without a viable route, titles remain unchanged. Idle recaps use the same route order and never substitute the current session model.
 

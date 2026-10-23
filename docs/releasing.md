@@ -23,7 +23,7 @@ Bump each affected package exactly once. Classify the package's own documented p
 - **Minor:** backward-compatible features and a raised Pi peer floor within the same Pi major.
 - **Major:** incompatible changes to exported APIs, commands or tool schemas, configuration or persisted data that requires user action, or documented behavior, including a function removed because Pi now provides it; dropping a Pi major or a Node.js runtime.
 
-If an internal `@henryqw/*` workspace gets a major bump, update every direct consumer's range and add those consumers to the release set. A consumer that adapts while preserving its own contract normally receives a patch; the dependency's major release alone does not make it breaking.
+If an internal `@csubj/*` workspace gets a major bump, update every direct consumer's range and add those consumers to the release set. A consumer that adapts while preserving its own contract normally receives a patch; the dependency's major release alone does not make it breaking.
 
 For a `0.x` package, use patch for compatible fixes and minor for features or breaking changes. Move to `1.0.0` only when intentionally declaring its public contract stable.
 
@@ -60,7 +60,7 @@ When adding a public workspace, check `npm view <package-name> version`. An `E40
 
 ### Maintainer steps
 
-Run from the package directory (`extensions/<directory>` or `packages/<directory>`) at the reviewed, validated commit intended for release. Keep the package under `@henryqw` and run its documented build/checks first. These commands use npm 11.15 or newer for the trust CLI:
+Run from the package directory (`extensions/<directory>` or `packages/<directory>`) at the reviewed, validated commit intended for release. Keep the package under `@csubj` and run its documented build/checks first. These commands use npm 11.15 or newer for the trust CLI:
 
 ```sh
 # 1. Confirm the package and inspect the artifact.
@@ -85,12 +85,12 @@ npm view "$PACKAGE@$VERSION" version
 
 Authenticate, publish, and change trust settings only after an explicit request. Complete login and 2FA in the browser; never paste credentials or one-time passwords into chat. Publication is public, not a dry run. If its response is lost, verify the exact version on npm before deciding whether to retry.
 
-Step 3 uses the [`npm-ops` trusted publishing sync](../.agents/skills/npm-ops/SKILL.md#trusted-publishing). It creates missing trust configuration and can change other packages' mismatched settings. Inspect the check results before applying changes. Report bootstrap complete only after verifying the exact version, publisher repository `HenryQW/pi-harness`, workflow `publish.yml`, and permission to publish. No registry deprecations are included in this checklist.
+Step 3 uses the [`npm-ops` trusted publishing sync](../.agents/skills/npm-ops/SKILL.md#trusted-publishing). It creates missing trust configuration and can change other packages' mismatched settings. Inspect the check results before applying changes. Report bootstrap complete only after verifying the exact version, publisher repository `csubj/pi-harness`, workflow `publish.yml`, and permission to publish. No registry deprecations are included in this checklist.
 
 CI trusted publishing requires npm CLI 11.5.1 or newer and GitHub OIDC; the workflow grants `id-token: write`. No npm token needs to be added to GitHub secrets.
 
 ## Retire a package
 
-Archive the final source, docs, and tests under `deprecated/`, excluded from workspaces, tests, and publishing. Point the README to the replacement and record the decision in an ADR.
+Remove the package source, docs, and tests from the workspace. Name the replacement in the release notes and record the decision in an ADR.
 
 Repository retirement does not deprecate npm versions. After the replacement is published, use the [`npm-ops` skill](../.agents/skills/npm-ops/SKILL.md#deprecate-packages-or-versions) to draft, preview, apply, and verify deprecation. Live deprecation needs an explicit request, maintainer authentication, and possibly browser 2FA. A request to update the skill or draft a message is not authorization. Deprecation adds install warnings; it does not unpublish versions or delete users' data.

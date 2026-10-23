@@ -1,4 +1,4 @@
-# `@henryqw/pi-task-models`
+# `@csubj/pi-task-models`
 
 Configure shared Task Profiles for `fast`, `balanced`, `frontier`, and `fav`. Each Task Route pairs a model with a thinking level; each consumer owns its Model Tasks and defaults.
 
@@ -8,20 +8,20 @@ Configure shared Task Profiles for `fast`, `balanced`, `frontier`, and `fav`. Ea
 ## Install
 
 ```bash
-pi install npm:@henryqw/pi-task-models
+pi install npm:@csubj/pi-task-models
 ```
 
 ## Works with
 
 | Package | Relationship | Purpose |
 | --- | --- | --- |
-| [`@henryqw/pi-auto-compact`](https://pi.henry.wang/extensions/pi-auto-compact) | Consumer | Compaction defaults to `fast`. |
-| [`@henryqw/pi-cron`](https://pi.henry.wang/extensions/pi-cron) | Consumer | Scheduled jobs default to `fast`. |
-| [`@henryqw/pi-herdr-tools`](https://pi.henry.wang/extensions/pi-herdr-tools) | Consumer | Side-thread and rename tasks default to `fast`. |
-| [`@henryqw/pi-memory`](https://pi.henry.wang/extensions/pi-memory) | Consumer | Candidate review, `/remember` preparation, and `/dream` promotion default to `balanced`. |
-| [`@henryqw/pi-multi-codex`](https://pi.henry.wang/extensions/pi-multi-codex) | Improves | Numbered Codex slots become one route. |
-| [`@henryqw/pi-prompt-creator`](https://pi.henry.wang/extensions/pi-prompt-creator) | Consumer | Prompt drafting defaults to `fast`. |
-| [`@henryqw/pi-subagent`](https://pi.henry.wang/extensions/pi-subagent) | Consumer | Delegation defaults to `fast`. Callers can declare their own task. |
+| [`@csubj/pi-auto-compact`](https://github.com/csubj/pi-harness/tree/main/extensions/pi-auto-compact) | Consumer | Compaction defaults to `fast`. |
+| [`@csubj/pi-cron`](https://github.com/csubj/pi-harness/tree/main/extensions/pi-cron) | Consumer | Scheduled jobs default to `fast`. |
+| [`@csubj/pi-herdr-tools`](https://github.com/csubj/pi-harness/tree/main/extensions/pi-herdr-tools) | Consumer | Side-thread and rename tasks default to `fast`. |
+| [`@csubj/pi-memory`](https://github.com/csubj/pi-harness/tree/main/extensions/pi-memory) | Consumer | Candidate review, `/remember` preparation, and `/dream` promotion default to `balanced`. |
+| [`@csubj/pi-multi-codex`](https://github.com/csubj/pi-harness/tree/main/extensions/pi-multi-codex) | Improves | Numbered Codex slots become one route. |
+| [`@csubj/pi-prompt-creator`](https://github.com/csubj/pi-harness/tree/main/extensions/pi-prompt-creator) | Consumer | Prompt drafting defaults to `fast`. |
+| [`@csubj/pi-subagent`](https://github.com/csubj/pi-harness/tree/main/extensions/pi-subagent) | Consumer | Delegation defaults to `fast`. Callers can declare their own task. |
 
 ## Use
 

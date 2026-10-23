@@ -1,11 +1,11 @@
-# `@henryqw/pi-goal`
+# `@csubj/pi-goal`
 
 Give the agent one goal, and Pi continues the work after each stop. The loop ends when the agent gives evidence for each deliverable, or when a stop limit applies.
 
 ## Install
 
 ```bash
-pi install npm:@henryqw/pi-goal
+pi install npm:@csubj/pi-goal
 ```
 
 ## Use

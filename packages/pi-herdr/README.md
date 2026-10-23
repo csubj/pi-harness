@@ -1,11 +1,11 @@
-# `@henryqw/pi-herdr`
+# `@csubj/pi-herdr`
 
 Call the Herdr CLI from Node through one Herdr Client. Extension authors share process handling without copying the list of Herdr commands. Pi users usually install a Herdr companion extension instead.
 
 ## Install
 
 ```bash
-npm install @henryqw/pi-herdr
+npm install @csubj/pi-herdr
 ```
 
 Install the Herdr CLI. Make `herdr` available on the calling process's `PATH`. The client requires Herdr 0.9.3 or later. Run `herdr --version` to verify the version.
@@ -15,13 +15,13 @@ Install the Herdr CLI. Make `herdr` available on the calling process's `PATH`. T
 Create a Herdr Client. Run a command. The client returns the parsed response.
 
 ```ts
-import { createHerdrClient } from "@henryqw/pi-herdr";
+import { createHerdrClient } from "@csubj/pi-herdr";
 
 const herdr = createHerdrClient(pi.exec.bind(pi));
 const response = await herdr.json(["agent", "list"], { cwd: ctx.cwd });
 ```
 
-For a ready-to-use Pi workflow, see [`@henryqw/pi-herdr-tools`](https://pi.henry.wang/extensions/pi-herdr-tools).
+For a ready-to-use Pi workflow, see [`@csubj/pi-herdr-tools`](https://github.com/csubj/pi-harness/tree/main/extensions/pi-herdr-tools).
 
 ## API
 

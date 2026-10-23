@@ -9,7 +9,7 @@ import {
 	type ExtensionAPI,
 	type ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
-import { createConfigStore, extensionConfigDir, field, formatConfigIssues, parsers, registerConfigReporting, type FieldParser } from "@henryqw/pi-config-store";
+import { createConfigStore, extensionConfigDir, field, formatConfigIssues, parsers, registerConfigReporting, type FieldParser } from "@csubj/pi-config-store";
 import { hasDisplayControlCharacters } from "./display-text.ts";
 import { DEFAULT_MAX_TURNS } from "./ephemeral.ts";
 import { loadRoleMcpConfig, parseRoleMcpAllowlist } from "./mcp-role.ts";
@@ -25,7 +25,7 @@ import {
 	type ProfileName,
 	type ResolvedTaskRoute,
 	type ThinkingLevel,
-} from "@henryqw/pi-task-models";
+} from "@csubj/pi-task-models";
 
 export { DISPLAY_TEXT_CONTRACT, hasDisplayControlCharacters } from "./display-text.ts";
 export { loadRoleMcpConfig, parseRoleMcpAllowlist } from "./mcp-role.ts";
@@ -65,7 +65,7 @@ export {
 } from "./review-evidence.ts";
 
 const CODEX_ALIAS = /^openai-codex-(?:[2-9]|[1-9]\d+)$/;
-const MULTI_CODEX_EXTENSION = fileURLToPath(import.meta.resolve("@henryqw/pi-multi-codex/extensions/multi-codex.ts"));
+const MULTI_CODEX_EXTENSION = fileURLToPath(import.meta.resolve("@csubj/pi-multi-codex/extensions/multi-codex.ts"));
 const ROLE_MCP_EXTENSION = fileURLToPath(new URL("../extensions/role-mcp.ts", import.meta.url));
 const ROLE_TOOLS_EXTENSION = fileURLToPath(new URL("../extensions/role-tools.ts", import.meta.url));
 const GIT_READ_EXTENSION = fileURLToPath(new URL("../extensions/git-read.ts", import.meta.url));

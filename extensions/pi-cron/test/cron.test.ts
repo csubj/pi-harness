@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test, { after } from "node:test";
 import type { ExtensionAPI, ExtensionCommandContext, ExtensionContext } from "@earendil-works/pi-coding-agent";
-import type { EphemeralSubagentExecutor, EphemeralSubagentRunInput } from "@henryqw/pi-subagent";
+import type { EphemeralSubagentExecutor, EphemeralSubagentRunInput } from "@csubj/pi-subagent";
 import { lock } from "proper-lockfile";
 import cronExtension, { CRON_RESULT_TYPE } from "../extensions/cron.ts";
 import type { Limits } from "../internal/config.ts";
