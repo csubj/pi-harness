@@ -19,7 +19,7 @@ An active-path clone in a fresh Herdr Git worktree workspace, with the new check
 _Avoid_: branch clone, repo copy
 
 **Worktree handoff**:
-A new task sent as one self-contained prompt to a new Pi agent in a fresh Herdr worktree based on local `main`. It does not copy the current conversation or provide checked integration.
+A new task sent as one self-contained prompt to a new Pi agent in a fresh Herdr worktree based on local `main`. The repository is the current one or a selected child repository. It does not copy the current conversation or provide checked integration.
 _Avoid_: worktree clone, delegation
 
 **Ambiguous launch**:
@@ -33,7 +33,7 @@ _Avoid_: Pi exit, implicit forced cleanup
 ### Side questions
 
 **Main**:
-The parent Pi session that owns side-thread launch and merge delivery.
+The parent Pi session that owns side-thread launch and merge delivery. Main is not the Git branch `main`.
 _Avoid_: parent agent
 
 **Side thread**:
@@ -54,6 +54,22 @@ _Avoid_: merge acknowledgement
 
 **Pending delivery**:
 A merge request saved for its original Main session but not yet consumed there.
+
+### Command panes
+
+These terms come from [ADR 022](../../docs/adr/022-multi-repo-targets-and-command-panes.md) (proposed).
+
+**Command job**:
+One executable and argument list that Main starts in a command pane. It has an opaque job ID, a saved exit status, and limits on run time and output.
+_Avoid_: background shell, task
+
+**Command pane**:
+The Herdr split pane that a command job owns. Stopping the job closes only this pane.
+_Avoid_: side pane, worker tab
+
+**Command output**:
+A bounded snapshot of recent terminal text from a command pane. It is untrusted and incomplete. The saved exit status, not the output, shows how the job ended.
+_Avoid_: command result, log
 
 ### Titles and attention
 

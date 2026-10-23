@@ -2,6 +2,7 @@
 
 - **Status:** accepted
 - **Date:** 2026-09-23
+- **Amended by:** [ADR 022](022-multi-repo-targets-and-command-panes.md) (proposed). It adds Repository targets, scoped checkout admission, the configurable Full suite, and run state version 6.
 
 ## Context
 
