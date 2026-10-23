@@ -338,6 +338,12 @@ importers:
 
   packages/pi-process: {}
 
+  packages/pi-repo:
+    dependencies:
+      '@csubj/pi-process':
+        specifier: ^0.2.0
+        version: link:../pi-process
+
   website:
     devDependencies:
       blume:
