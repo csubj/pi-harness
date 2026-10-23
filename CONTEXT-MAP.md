@@ -22,6 +22,7 @@ Each context defines package-specific language and its boundary. Contexts are ad
 | `pi-multi-codex` | [Pi Multi Codex](extensions/pi-multi-codex/CONTEXT.md) | Codex account slots, quota ranking, and failover |
 | `pi-notes` | [Pi Notes](extensions/pi-notes/CONTEXT.md) | User reminders owned by one Git worktree instance |
 | `pi-prompt-creator` | [Pi Prompt Creator](extensions/pi-prompt-creator/CONTEXT.md) | Conversation signals, prompt candidates, review, and approved prompt creation |
+| `pi-repo` | [Pi Repo](packages/pi-repo/CONTEXT.md) | Repository targets, selectors, and bounded child repository discovery |
 | `pi-session-recall` | [Pi Session Recall](extensions/pi-session-recall/CONTEXT.md) | Saved conversation evidence, branch-aware retrieval, and independent mining examples |
 | `pi-subagent` | [Pi Subagent](extensions/pi-subagent/CONTEXT.md) | Role delegation, shared-checkout admission, and checked isolated integration |
 | `pi-task-models` | [Pi Task Models](extensions/pi-task-models/CONTEXT.md) | Consumer-owned Model Tasks, shared routes, assignments, and presets |

@@ -35,7 +35,7 @@
     ]
   },
   "scripts": {
-    "build": "pnpm --filter @csubj/pi-config-store --filter @csubj/pi-herdr --filter @csubj/pi-process --filter @csubj/pi-task-models --filter @csubj/pi-subagent --filter @csubj/pi-ask-question run build",
+    "build": "pnpm --filter @csubj/pi-config-store --filter @csubj/pi-herdr --filter @csubj/pi-process --filter @csubj/pi-repo --filter @csubj/pi-task-models --filter @csubj/pi-subagent --filter @csubj/pi-ask-question run build",
     "postinstall": "pnpm run build",
     "test": "node --test scripts/check-package-versions.test.mjs scripts/rebump-versions.test.mjs scripts/publish-decision.test.mjs && node --test 'evals/**/*.test.ts' && node scripts/test-workspaces.mjs",
     "eval": "node evals/run.ts",
