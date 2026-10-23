@@ -93,42 +93,6 @@ printf '${name} ${version}\\n'
 `;
 }
 
-function legacyPi({
-  installFails = false,
-  uninstallFails = false,
-  removalPersists = false,
-  packageSource = "npm:@henryqw/pi-auto-dag",
-  packageScopes = ["User"],
-  filtered = false,
-} = {}) {
-  return `#!/bin/sh
-printf 'pi %s\\n' "$*" >> "$PI_HARNESS_TEST_LOG"
-marker="$PI_HARNESS_TEST_DIR/pi-initialized"
-source="$PI_HARNESS_TEST_DIR/legacy-source"
-if [ ! -f "$marker" ]; then
-  : > "$marker"
-  for scope in ${packageScopes.join(" ")}; do : > "$source-$scope"; done
-fi
-case "$1" in
-  --version) printf 'pi 1.1.0\\n' ;;
-  install)
-    ${installFails ? "[ \"$2\" != \"npm:@henryqw/pi-herdr-tools\" ] || exit 1" : ":"}
-    ;;
-  list)
-    for scope in ${packageScopes.join(" ")}; do
-      [ ! -f "$source-$scope" ] || printf '%s packages:\\n  ${packageSource}${filtered ? " (filtered)" : ""}\\n    /tmp/legacy-package\\n' "$scope"
-    done
-    ;;
-  uninstall)
-    [ "$2" = '${packageSource}' ] || exit 1
-    scope=User
-    [ "\${3:-}" != --local ] || scope=Project
-    ${uninstallFails ? "exit 1" : removalPersists ? ":" : "rm -f \"$source-$scope\""}
-    ;;
-esac
-`;
-}
-
 const compatiblePi = compatibleTool("pi", "1.1.0");
 const compatibleHerdr = compatibleTool("herdr", "0.9.0");
 const baseHerdr = compatibleTool("herdr", "0.7.4");
@@ -140,11 +104,11 @@ test("installer package discovery ignores directories without manifests", () => 
     mkdirSync(join(root, "extensions", "stale-package", "dist"), { recursive: true });
     mkdirSync(join(root, "extensions", "example"));
     writeFileSync(join(root, "extensions", "example", "package.json"), JSON.stringify({
-      name: "@henryqw/example",
+      name: "@csubj/example",
       pi: {},
     }));
 
-    assert.deepEqual(collectInstallablePackages(root), ["@henryqw/example"]);
+    assert.deepEqual(collectInstallablePackages(root), ["@csubj/example"]);
   } finally {
     rmSync(root, { force: true, recursive: true });
   }
@@ -156,14 +120,12 @@ test("installer stays synchronized with every public Pi package", () => {
 
   assert.deepEqual(packageNamesFromInstaller(source), names);
   assert.equal(renderInstaller(source, names), source);
-  assert.ok(!names.includes("@henryqw/pi-config-store"));
-  assert.ok(!names.includes("@henryqw/pi-herdr"));
-  assert.ok(!names.includes("@henryqw/pi-auto-dag"));
-  assert.ok(!names.includes("@henryqw/pi-orchestrator"));
-  assert.ok(names.includes("@henryqw/pi-subagent"));
+  assert.ok(!names.includes("@csubj/pi-config-store"));
+  assert.ok(!names.includes("@csubj/pi-herdr"));
+  assert.ok(names.includes("@csubj/pi-subagent"));
 });
 
-test("all mode requires Herdr 0.9.0, installs every extension, and skips absent legacy cleanup", () => {
+test("all mode requires Herdr 0.9.0, installs every extension", () => {
   const names = collectInstallablePackages(repoRoot);
 
   withInstaller(compatiblePi, compatibleHerdr, ({ commands, runInstaller }) => {
@@ -171,10 +133,7 @@ test("all mode requires Herdr 0.9.0, installs every extension, and skips absent 
     assert.deepEqual(commands(), [
       "pi --version",
       "herdr --version",
-      ...names.flatMap((name) => [
-        `pi install npm:${name}`,
-        ...(["@henryqw/pi-footer", "@henryqw/pi-herdr-tools", "@henryqw/pi-subagent"].includes(name) ? ["pi list"] : []),
-      ]),
+      ...names.map((name) => `pi install npm:${name}`),
     ]);
   });
 });
@@ -185,11 +144,10 @@ test("pi-herdr-tools alone retains the Herdr 0.7.4 floor", () => {
     assert.deepEqual(commands(), [
       "pi --version",
       "herdr --version",
-      "pi install npm:@henryqw/pi-herdr-tools",
-      "pi list",
+      "pi install npm:@csubj/pi-herdr-tools",
     ]);
   }, {
-    extensions: ["@henryqw/pi-herdr-tools"],
+    extensions: ["@csubj/pi-herdr-tools"],
     herdrLatest: "0.7.4",
   });
 });
@@ -201,7 +159,7 @@ test("pi-subagent alone rejects Herdr below 0.9.0", () => {
     assert.equal(result.status, 1);
     assert.match(result.stderr, /Herdr 0\.8\.9.*Herdr 0\.9\.0\+ is required/);
     assert.deepEqual(commands(), ["pi --version", "herdr --version"]);
-  }, { extensions: ["@henryqw/pi-subagent"] });
+  }, { extensions: ["@csubj/pi-subagent"] });
 });
 
 test("update flag approves available Pi and Herdr updates", () => {
@@ -218,10 +176,7 @@ test("update flag approves available Pi and Herdr updates", () => {
       "herdr --version",
       "herdr update",
       "herdr --version",
-      ...names.flatMap((name) => [
-        `pi install npm:${name}`,
-        ...(["@henryqw/pi-footer", "@henryqw/pi-herdr-tools", "@henryqw/pi-subagent"].includes(name) ? ["pi list"] : []),
-      ]),
+      ...names.map((name) => `pi install npm:${name}`),
     ]);
   }, { piLatest: "1.1.0", herdrLatest: "0.9.0" });
 });
@@ -323,145 +278,4 @@ test("an older existing Herdr reports the pi-subagent floor", () => {
     assert.match(result.stderr, /Herdr 0\.8\.9.*Herdr 0\.9\.0\+ is required/);
     assert.deepEqual(commands(), ["pi --version", "herdr --version"]);
   });
-});
-
-test("a pi-subagent upgrade removes only the exact retired npm source after installation", () => {
-  withInstaller(legacyPi(), compatibleHerdr, ({ commands, runInstaller }) => {
-    assert.equal(runInstaller().status, 0);
-    assert.deepEqual(commands(), [
-      "pi --version",
-      "herdr --version",
-      "pi install npm:@henryqw/pi-subagent",
-      "pi list",
-      "pi uninstall npm:@henryqw/pi-auto-dag",
-      "pi list",
-      "pi install npm:@henryqw/pi-herdr-tools",
-      "pi list",
-    ]);
-  }, { extensions: ["@henryqw/pi-subagent", "@henryqw/pi-herdr-tools"] });
-});
-
-test("a pi-subagent upgrade removes the retired orchestrator source after installation", () => {
-  withInstaller(legacyPi({ packageSource: "npm:@henryqw/pi-orchestrator" }), compatibleHerdr, ({ commands, runInstaller }) => {
-    assert.equal(runInstaller().status, 0);
-    assert.deepEqual(commands(), [
-      "pi --version",
-      "herdr --version",
-      "pi install npm:@henryqw/pi-subagent",
-      "pi list",
-      "pi uninstall npm:@henryqw/pi-orchestrator",
-      "pi list",
-    ]);
-  }, { extensions: ["@henryqw/pi-subagent"] });
-});
-
-test("folded packages are removed only after their selected replacement installs", () => {
-  for (const [replacement, retired] of [
-    ["@henryqw/pi-herdr-tools", "npm:@henryqw/pi-herdr-btw"],
-    ["@henryqw/pi-herdr-tools", "npm:@henryqw/pi-herdr-clone"],
-    ["@henryqw/pi-herdr-tools", "npm:@henryqw/pi-herdr-rename"],
-    ["@henryqw/pi-herdr-tools", "npm:@henryqw/pi-herdr-done"],
-    ["@henryqw/pi-footer", "npm:@henryqw/pi-open-in"],
-  ]) {
-    withInstaller(legacyPi({ packageSource: retired }), baseHerdr, ({ commands, runInstaller }) => {
-      assert.equal(runInstaller().status, 0);
-      assert.deepEqual(commands(), [
-        "pi --version", "herdr --version", `pi install npm:${replacement}`,
-        "pi list", `pi uninstall ${retired}`, "pi list",
-      ]);
-    }, { extensions: [replacement], herdrLatest: "0.7.4" });
-  }
-});
-
-test("selecting footer does not remove the retired Herdr completion package", () => {
-  withInstaller(legacyPi({ packageSource: "npm:@henryqw/pi-herdr-done" }), baseHerdr, ({ commands, runInstaller }) => {
-    assert.equal(runInstaller().status, 0);
-    assert.deepEqual(commands(), [
-      "pi --version", "herdr --version", "pi install npm:@henryqw/pi-footer", "pi list",
-    ]);
-  }, { extensions: ["@henryqw/pi-footer"], herdrLatest: "0.7.4" });
-});
-
-test("a later install failure does not leave an earlier replacement's retired source installed", () => {
-  withInstaller(legacyPi({ installFails: true }), compatibleHerdr, ({ commands, runInstaller }) => {
-    assert.equal(runInstaller().status, 1);
-    assert.deepEqual(commands(), [
-      "pi --version",
-      "herdr --version",
-      "pi install npm:@henryqw/pi-subagent",
-      "pi list",
-      "pi uninstall npm:@henryqw/pi-auto-dag",
-      "pi list",
-      "pi install npm:@henryqw/pi-herdr-tools",
-    ]);
-  }, { extensions: ["@henryqw/pi-subagent", "@henryqw/pi-herdr-tools"] });
-});
-
-test("a failed replacement install leaves its own retired sources untouched", () => {
-  withInstaller(legacyPi({ installFails: true, packageSource: "npm:@henryqw/pi-herdr-btw" }), baseHerdr, ({ commands, runInstaller }) => {
-    assert.equal(runInstaller().status, 1);
-    assert.deepEqual(commands(), ["pi --version", "herdr --version", "pi install npm:@henryqw/pi-herdr-tools"]);
-  }, { extensions: ["@henryqw/pi-herdr-tools"], herdrLatest: "0.7.4" });
-});
-
-test("pinned filtered sources are removed from both user and project scopes", () => {
-  const packageSource = "npm:@henryqw/pi-open-in@1.0.0";
-  withInstaller(legacyPi({ packageSource, filtered: true, packageScopes: ["User", "Project"] }), baseHerdr, ({ commands, runInstaller }) => {
-    assert.equal(runInstaller().status, 0);
-    assert.deepEqual(commands(), [
-      "pi --version", "herdr --version", "pi install npm:@henryqw/pi-footer", "pi list",
-      `pi uninstall ${packageSource}`, "pi list",
-      `pi uninstall ${packageSource} --local`, "pi list",
-    ]);
-  }, { extensions: ["@henryqw/pi-footer"], herdrLatest: "0.7.4" });
-});
-
-test("legacy cleanup ignores package-name substrings", () => {
-  const pi = `#!/bin/sh
-printf 'pi %s\\n' "$*" >> "$PI_HARNESS_TEST_LOG"
-case "$1" in
-  --version) printf 'pi 1.1.0\\n' ;;
-  list) printf 'User packages:\\n  npm:@henryqw/pi-auto-dag-copy\\n    /tmp/pi-auto-dag\\n' ;;
-esac
-`;
-  withInstaller(pi, compatibleHerdr, ({ commands, runInstaller }) => {
-    assert.equal(runInstaller().status, 0);
-    assert.deepEqual(commands(), [
-      "pi --version",
-      "herdr --version",
-      "pi install npm:@henryqw/pi-subagent",
-      "pi list",
-    ]);
-  }, { extensions: ["@henryqw/pi-subagent"] });
-});
-
-test("a failed legacy uninstall aborts", () => {
-  withInstaller(legacyPi({ uninstallFails: true }), compatibleHerdr, ({ commands, runInstaller }) => {
-    const result = runInstaller();
-    assert.equal(result.status, 1);
-    assert.match(result.stderr, /Could not remove retired Pi package source npm:@henryqw\/pi-auto-dag/);
-    assert.deepEqual(commands(), [
-      "pi --version",
-      "herdr --version",
-      "pi install npm:@henryqw/pi-subagent",
-      "pi list",
-      "pi uninstall npm:@henryqw/pi-auto-dag",
-    ]);
-  }, { extensions: ["@henryqw/pi-subagent"] });
-});
-
-test("failed proof of legacy removal aborts", () => {
-  withInstaller(legacyPi({ removalPersists: true }), compatibleHerdr, ({ commands, runInstaller }) => {
-    const result = runInstaller();
-    assert.equal(result.status, 1);
-    assert.match(result.stderr, /npm:@henryqw\/pi-auto-dag is still installed/);
-    assert.deepEqual(commands(), [
-      "pi --version",
-      "herdr --version",
-      "pi install npm:@henryqw/pi-subagent",
-      "pi list",
-      "pi uninstall npm:@henryqw/pi-auto-dag",
-      "pi list",
-    ]);
-  }, { extensions: ["@henryqw/pi-subagent"] });
 });

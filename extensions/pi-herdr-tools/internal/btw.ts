@@ -1,8 +1,8 @@
 import { randomUUID } from "node:crypto";
 import type { ExtensionAPI, ExtensionCommandContext, ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { registerConfigReporting } from "@henryqw/pi-config-store";
-import { createHerdrClient, hasHerdrErrorCode, startPiAgent } from "@henryqw/pi-herdr";
-import { registerModelTask, registerTaskModelsConfigReporting, type ModelTask, type ResolvedTaskRoute } from "@henryqw/pi-task-models";
+import { registerConfigReporting } from "@csubj/pi-config-store";
+import { createHerdrClient, hasHerdrErrorCode, startPiAgent } from "@csubj/pi-herdr";
+import { registerModelTask, registerTaskModelsConfigReporting, type ModelTask, type ResolvedTaskRoute } from "@csubj/pi-task-models";
 import {
 	buildSessionContext,
 	convertToLlm,

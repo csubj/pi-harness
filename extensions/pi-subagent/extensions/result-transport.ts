@@ -1,4 +1,4 @@
-import { capEphemeralSubagentOutput, formatDuration } from "@henryqw/pi-subagent";
+import { capEphemeralSubagentOutput, formatDuration } from "@csubj/pi-subagent";
 import type { CheckoutNote, WorkflowEntry, WorkflowMode } from "./workflow.ts";
 
 const EVIDENCE_PREVIEW_CODE_POINTS = 256;

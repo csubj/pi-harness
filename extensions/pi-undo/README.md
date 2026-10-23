@@ -1,11 +1,11 @@
-# `@henryqw/pi-undo`
+# `@csubj/pi-undo`
 
 Return to the latest user prompt on the current branch, without later conversation context. Edit and resend the prompt in place instead of copying it into a new turn.
 
 ## Install
 
 ```bash
-pi install npm:@henryqw/pi-undo
+pi install npm:@csubj/pi-undo
 ```
 
 ## Use

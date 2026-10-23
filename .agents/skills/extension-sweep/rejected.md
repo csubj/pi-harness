@@ -11,10 +11,6 @@ Scouts must not report these again unless the cited code or its call frequency c
 | pi-subagent | Text-buffer and continuation double parse; serial `inspectMainBase` Git; extra render requests | Small, rare, or already coalesced. | #468 |
 | pi-subagent | Trim prompt text; remove helpers used only by tests | Maintainer declined; tests use them. | #468 |
 | pi-subagent | Remove built-in Role tool assertions in `examples.test.ts` | Security contract for Role tools. | 2026-10-20 |
-| pi-pr | Skill reinjection; sequential CI log reads; routing spinner; cross-repo metadata reads | Once per route, ordered budget, or rare. | #468 |
-| pi-pr | Remove re-reads that compare against an earlier discovery (`samePullRequestSnapshot`, `sameLinkage`, `freshAuthority`, the feedback guard's second discovery) | Authority brackets around mutations; maintainer kept them. | 2026-10-20 |
-| pi-pr | Parallel discovery reads; drop Codex reads from helper loads | Changes error order; maintainer deferred. | 2026-10-20 |
-| pi-pr | Remove action-list assertions in `pr.test.ts`; UI and discovery test duplicates | Public tool contract, or the only coverage of fetch-before-classify. | 2026-10-20 |
 | pi-herdr-tools | Skip `removeStale()` on the 3 s merge poll | Only expiry path for a deferred merge. | #468 |
 | pi-herdr-tools | Cache merge payload parse per launch | Runs only while a merge request is pending. | 2026-10-20 |
 | pi-herdr-tools | Parallel rename reads; duplicate handoff `rev-parse` | Ordered with `isCurrent`, or once per command. | 2026-10-20 |
@@ -24,7 +20,6 @@ Scouts must not report these again unless the cited code or its call frequency c
 | pi-session-recall | Reuse `pi-process` for `runGit` | Not a drop-in swap (environment, byte parsing). | 2026-10-20 |
 | pi-session-recall | Incremental indexing of appended session data | Medium risk; maintainer deferred. | 2026-10-20 |
 | pi-cron | Config and state reload per tick; `Intl` formatter cache | Real config is 263 bytes; one tick per 60 s. | 2026-10-20 |
-| pi-rtk-test | Lazy `rtk test --help` probe | Measured 5 ms. | 2026-10-20 |
 | pi-add-dir | Instruction reads per turn; `promptGuidelines` trim | Keeps edits live; maintainer deferred prompt trims. | #468, 2026-10-20 |
 | pi-auto-compact | Use `ctx.model.contextWindow` before `getContextUsage()` | Routed-model window risk for small gain. | 2026-10-20 |
 | pi-footer, pi-notes, pi-codegraph, pi-ask-question | Usage loop; notes Git pruning; startup probes; snippet tokens | Linear, no records, startup only, or about 20 tokens. | #468 |

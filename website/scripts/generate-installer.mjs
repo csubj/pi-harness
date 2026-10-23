@@ -7,7 +7,7 @@ const websiteDir = resolve(scriptDir, "..");
 const repoRoot = resolve(websiteDir, "..");
 const installerPath = join(websiteDir, "public", "install.sh");
 const generatedExtensions = /(# BEGIN GENERATED EXTENSIONS\nEXTENSIONS='\n)([\s\S]*?)(\n'\n# END GENERATED EXTENSIONS)/;
-const packageName = /^@henryqw\/[a-z0-9][a-z0-9-]*$/;
+const packageName = /^@csubj\/[a-z0-9][a-z0-9-]*$/;
 
 export function collectInstallablePackages(root = repoRoot) {
   const extensionsDir = join(root, "extensions");
@@ -45,7 +45,7 @@ function main() {
 
   if (check) {
     if (output !== source) {
-      throw new Error("website/public/install.sh is stale. Run pnpm --filter @henryqw/pi-docs run generate:installer.");
+      throw new Error("website/public/install.sh is stale. Run pnpm --filter @csubj/pi-docs run generate:installer.");
     }
     return;
   }

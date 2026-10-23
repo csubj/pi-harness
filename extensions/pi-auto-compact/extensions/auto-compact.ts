@@ -7,7 +7,7 @@ import {
 	getAgentDir,
 	SettingsManager,
 } from "@earendil-works/pi-coding-agent";
-import { createConfigStore, field, parsers, registerConfigReporting } from "@henryqw/pi-config-store";
+import { createConfigStore, field, parsers, registerConfigReporting } from "@csubj/pi-config-store";
 import type {
 	AgentBeforeSettleEvent,
 	CompactionEntry,
@@ -26,7 +26,7 @@ import {
 	type ModelTask,
 	type ResolvedTaskRoute,
 	type TaskRouteError,
-} from "@henryqw/pi-task-models";
+} from "@csubj/pi-task-models";
 
 type AgentMessage = Parameters<typeof estimateTokens>[0];
 

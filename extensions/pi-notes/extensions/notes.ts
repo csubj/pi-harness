@@ -6,7 +6,7 @@ import {
 	type ExtensionAPI,
 	type ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
-import { extensionConfigDir, writePrivateTextFileAtomically } from "@henryqw/pi-config-store";
+import { extensionConfigDir, writePrivateTextFileAtomically } from "@csubj/pi-config-store";
 import { truncateToWidth, wrapTextWithAnsi } from "@earendil-works/pi-tui";
 
 const MAX_NOTES = 4;

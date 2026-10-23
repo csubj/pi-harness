@@ -1,13 +1,13 @@
-# `@henryqw/pi-add-dir`
+# `@csubj/pi-add-dir`
 
 Use external context, external skills, and searchable files in Pi without copying or linking external directories.
 
-![Pi using added external directories by name](https://raw.githubusercontent.com/HenryQW/pi-harness/main/extensions/pi-add-dir/example.png)
+![Pi using added external directories by name](https://raw.githubusercontent.com/csubj/pi-harness/main/extensions/pi-add-dir/example.png)
 
 ## Install
 
 ```bash
-pi install npm:@henryqw/pi-add-dir
+pi install npm:@csubj/pi-add-dir
 ```
 
 ## Use

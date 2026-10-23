@@ -1,6 +1,6 @@
 {
-  "name": "@henryqw/pi-deps",
-  "version": "3.2.4",
+  "name": "@csubj/pi-deps",
+  "version": "3.2.5",
   "description": "Prepare Node and uv dependencies when opted-in Git worktrees are created.",
   "keywords": [
     "pi-package",
@@ -31,11 +31,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/HenryQW/pi-harness.git",
+    "url": "git+https://github.com/csubj/pi-harness.git",
     "directory": "extensions/pi-deps"
   },
   "bugs": {
-    "url": "https://github.com/HenryQW/pi-harness/issues"
+    "url": "https://github.com/csubj/pi-harness/issues"
   },
   "publishConfig": {
     "access": "public"

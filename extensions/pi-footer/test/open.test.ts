@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import openInExtension, { configuredOpenUri, loadOpenInConfig } from "@henryqw/pi-footer/open-uri";
+import openInExtension, { configuredOpenUri, loadOpenInConfig } from "@csubj/pi-footer/open-uri";
 
 type Context = { cwd: string; hasUI: boolean; ui: { notify(message: string, type: string): void } };
 type Command = (args: string, ctx: Context) => Promise<void>;

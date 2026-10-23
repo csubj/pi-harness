@@ -1,6 +1,6 @@
 {
-  "name": "@henryqw/pi-multi-codex",
-  "version": "3.2.4",
+  "name": "@csubj/pi-multi-codex",
+  "version": "3.2.5",
   "description": "Use multiple ChatGPT Codex OAuth accounts in Pi.",
   "keywords": [
     "pi-package",
@@ -31,11 +31,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/HenryQW/pi-harness.git",
+    "url": "git+https://github.com/csubj/pi-harness.git",
     "directory": "extensions/pi-multi-codex"
   },
   "bugs": {
-    "url": "https://github.com/HenryQW/pi-harness/issues"
+    "url": "https://github.com/csubj/pi-harness/issues"
   },
   "publishConfig": {
     "access": "public"
@@ -44,10 +44,10 @@
     "extensions": [
       "./extensions"
     ],
-    "image": "https://raw.githubusercontent.com/HenryQW/pi-harness/main/extensions/pi-multi-codex/example.png"
+    "image": "https://raw.githubusercontent.com/csubj/pi-harness/main/extensions/pi-multi-codex/example.png"
   },
   "dependencies": {
-    "@henryqw/pi-config-store": "^4.0.0",
+    "@csubj/pi-config-store": "^4.0.0",
     "proper-lockfile": "^4.1.2"
   },
   "devDependencies": {

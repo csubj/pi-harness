@@ -117,7 +117,6 @@ test("renders family status on the first line and external statuses beside runti
 	const colors: [string, string][] = [];
 	let extensionStatuses = new Map([
 		["ponytail", "●  🐴\tponytail: ⚡ FULL\r\nready"],
-		["pi-pr", "\x1b[32mPR #123 · approved\x1b[39m"],
 		["pi-multi-codex", "Codex #1 · 50% · 7d 1d 1h 22m"],
 		["pi-rewind", "↩ rewind"],
 		["hidden", ""],
@@ -137,11 +136,10 @@ test("renders family status on the first line and external statuses beside runti
 	assert.ok(colors.some(([color, text]) => color === "accent" && text === "clear-field-f8d2"));
 	const usageText = "↑ 3.2k · ↓ 500 · ↺ 50.0% · ⚡ — · $ 0.390 · ◔ 42.3%";
 	const modelText = "gpt-5.6-luna • high";
-	assert.match(stripTerminalSequences(rendered[0]!), /^repo · clear-field-f8d2 · PR #123 · approved +Codex #1 · 50% · 7d 1d 1h 22m$/);
+	assert.match(stripTerminalSequences(rendered[0]!), /^repo · clear-field-f8d2 +Codex #1 · 50% · 7d 1d 1h 22m$/);
 	assert.match(stripTerminalSequences(rendered[1]!), new RegExp(`^${usageText.replace("$", "\\$")} +${modelText}$`));
 	assert.match(stripTerminalSequences(rendered[2]!), /^↩ rewind · ●  🐴\tponytail: ⚡ FULL ready +◷ 0s$/);
-	assert.match(rendered[0]!, /\x1b\[32mPR #123 · approved\x1b\[39m/);
-	assert.doesNotMatch(rendered[2]!, /PR #123|Codex/);
+	assert.doesNotMatch(rendered[2]!, /Codex/);
 
 	// Narrow width: external status truncates first so the runtime stays visible.
 	const narrow = stripTerminalSequences(footer.render(30)[2]!);
@@ -150,7 +148,6 @@ test("renders family status on the first line and external statuses beside runti
 	extensionStatuses = new Map([
 		["pi-rewind", "↩ rewind"],
 		["pi-multi-codex", "  \r\n  "],
-		["pi-pr", "  "],
 		["hidden", "\n"],
 	]);
 	const withoutFamilyStatus = footer.render(100);

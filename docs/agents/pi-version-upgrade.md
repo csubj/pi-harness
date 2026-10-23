@@ -64,7 +64,7 @@ Before you release, test the final commit at the target. Each workspace resolves
     printf "  '@earendil-works/%s': %s\n" "$package" "$TARGET" >> pnpm-workspace.yaml
   done
   pnpm install && pnpm test && pnpm run typecheck
-  PI_BIN="$PWD/extensions/pi-pr/node_modules/.bin/pi" node evals/run.ts --model <provider/id>
+  PI_BIN="$PWD/extensions/pi-subagent/node_modules/.bin/pi" node evals/run.ts --model <provider/id>
 )
 ```
 
@@ -77,6 +77,6 @@ Add an audit log entry, even when every decision is `none`. Report decisions, wo
 Add one entry per audit: the version range, the date, and each `remove` or `change` decision with its changelog item. `none` items need no entry. The last entry's upper version is `BASE`.
 
 - `1.0.1` to `1.0.4` (2026-10-07): all `none`.
-- `1.0.4` to `1.1.0` (2026-10-09): `change` for "Added `aborted` to `agent_settled`": `@henryqw/pi-memory` drops deferred work from cancelled runs, `@henryqw/pi-bark` sends no **Pi finished** notification for cancelled runs, and `@henryqw/pi-prompt-creator` skips automatic analysis after cancellation. All other items `none`. Every Pi-dependent workspace now uses one Pi `1.1.0` package graph, which removes mixed `pi-ai` and `pi-tui` type identities. With the raised floor, `@henryqw/pi-subagent` also removed its obsolete Pi `1.0.0` rejection of `oauth.clientRegistration` `cimd`.
-- `1.1.0` to `1.2.0` (2026-10-13): `change` for "`before_agent_start` also fires for `pi.sendMessage(..., { triggerTurn: true })` runs; `BeforeAgentStartEvent` is a union on `messageType`": `@henryqw/pi-herdr-tools` automatic rename ignores custom-message runs, which have no `prompt`. All other items `none`; the peer floor stays `^1.1.0`. Reviewed later (2026-10-15): the workbench skill gets `change` for the `before_agent_start` union, the busy starting run, and `reachesTools`.
+- `1.0.4` to `1.1.0` (2026-10-09): `change` for "Added `aborted` to `agent_settled`": `@csubj/pi-memory` drops deferred work from cancelled runs, and `@csubj/pi-prompt-creator` skips automatic analysis after cancellation. All other items `none`. Every Pi-dependent workspace now uses one Pi `1.1.0` package graph, which removes mixed `pi-ai` and `pi-tui` type identities. With the raised floor, `@csubj/pi-subagent` also removed its obsolete Pi `1.0.0` rejection of `oauth.clientRegistration` `cimd`.
+- `1.1.0` to `1.2.0` (2026-10-13): `change` for "`before_agent_start` also fires for `pi.sendMessage(..., { triggerTurn: true })` runs; `BeforeAgentStartEvent` is a union on `messageType`": `@csubj/pi-herdr-tools` automatic rename ignores custom-message runs, which have no `prompt`. All other items `none`; the peer floor stays `^1.1.0`. Reviewed later (2026-10-15): the workbench skill gets `change` for the `before_agent_start` union, the busy starting run, and `reachesTools`.
 - `1.2.0` to `1.3.0` (2026-10-16): `change` for the workbench skill only: "Resumed sessions keep their active tools" adds native restoration and CLI selection guidance; "Fixed tool calls whose final arguments are malformed JSON" adds native rejection and `ToolCall.argumentsError` preservation guidance. All runtime items `none`; the peer floor stays at `1.1.0`. Published artifacts match the installed target, and all skill citations exist. Full target tests, typechecks, and live or interactive checks remain pending.

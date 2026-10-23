@@ -14,7 +14,7 @@ import {
 	withWorktreeLock,
 	type HerdrClient,
 	type HerdrExecResult,
-} from "@henryqw/pi-herdr";
+} from "@csubj/pi-herdr";
 import {
 	createWorktree,
 	errorMessage,

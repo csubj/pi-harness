@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import type { ConfigIssue, ConfigLoad } from "@henryqw/pi-config-store";
+import type { ConfigIssue, ConfigLoad } from "@csubj/pi-config-store";
 import { DEFAULT_CONFIG, type BtwConfig } from "../internal/config.ts";
 import { isBtwPayload, type BtwPayload } from "../internal/core.ts";
 import {

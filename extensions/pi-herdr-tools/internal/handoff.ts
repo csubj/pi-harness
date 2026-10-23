@@ -1,5 +1,5 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { createHerdrClient, herdrCommandFailure } from "@henryqw/pi-herdr";
+import { createHerdrClient, herdrCommandFailure } from "@csubj/pi-herdr";
 import { Type } from "typebox";
 import {
 	createWorktree,

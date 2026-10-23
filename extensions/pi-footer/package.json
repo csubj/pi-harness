@@ -1,6 +1,6 @@
 {
-  "name": "@henryqw/pi-footer",
-  "version": "5.1.6",
+  "name": "@csubj/pi-footer",
+  "version": "5.1.7",
   "description": "Show repository and usage details in the Pi footer and open the current working directory.",
   "keywords": [
     "pi-package",
@@ -33,11 +33,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/HenryQW/pi-harness.git",
+    "url": "git+https://github.com/csubj/pi-harness.git",
     "directory": "extensions/pi-footer"
   },
   "bugs": {
-    "url": "https://github.com/HenryQW/pi-harness/issues"
+    "url": "https://github.com/csubj/pi-harness/issues"
   },
   "publishConfig": {
     "access": "public"
@@ -47,10 +47,10 @@
       "./extensions/footer.ts",
       "./extensions/open.ts"
     ],
-    "image": "https://raw.githubusercontent.com/HenryQW/pi-harness/main/extensions/pi-footer/example.png"
+    "image": "https://raw.githubusercontent.com/csubj/pi-harness/main/extensions/pi-footer/example.png"
   },
   "dependencies": {
-    "@henryqw/pi-config-store": "^4.0.0"
+    "@csubj/pi-config-store": "^4.0.0"
   },
   "devDependencies": {
     "@earendil-works/pi-coding-agent": "1.3.0",

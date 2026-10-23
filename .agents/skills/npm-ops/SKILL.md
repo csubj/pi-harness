@@ -48,7 +48,7 @@ The npm API cannot update a configuration in place. The script revokes a mismatc
 
    ```bash
    # Set these to the established selector and drafted message, not placeholders.
-   TARGET='@henryqw/<retired-package>@<range>'
+   TARGET='@csubj/<retired-package>@<range>'
    MESSAGE='<reason, replacement, and migration guidance>'
    npx --yes npm@^11.15.0 deprecate "$TARGET" "$MESSAGE" --dry-run
    # Only after the preview succeeds and live deprecation was requested:

@@ -1,9 +1,9 @@
 import { randomUUID } from "node:crypto";
 import type { ExtensionAPI, ExtensionContext, Theme } from "@earendil-works/pi-coding-agent";
 import { type Component, Text, type TUI, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
-import { availableTaskModels, loadTaskModelsConfig, modelReference, type ProfileName, registerModelTask, registerTaskModelsConfigReporting, resolveAvailableModel, resolveConfiguredTaskRoute, type ResolvedTaskRoute, taskThinkingLevels } from "@henryqw/pi-task-models";
-import { registerConfigReporting } from "@henryqw/pi-config-store";
-import { capEphemeralSubagentOutput as capOutput, createEphemeralSubagentExecutor, createSubagentConfigStore, DEFAULT_SUBAGENT_CONFIG, DELEGATE_TASK, findRole, formatDuration, loadRoleCatalog, prepareRoleLaunch, resolveRolePackageResources, resolveTaskRoute, ROLE_TOOL_POLICY_FLAG, type ExecutionPolicySnapshot, type Role } from "@henryqw/pi-subagent";
+import { availableTaskModels, loadTaskModelsConfig, modelReference, type ProfileName, registerModelTask, registerTaskModelsConfigReporting, resolveAvailableModel, resolveConfiguredTaskRoute, type ResolvedTaskRoute, taskThinkingLevels } from "@csubj/pi-task-models";
+import { registerConfigReporting } from "@csubj/pi-config-store";
+import { capEphemeralSubagentOutput as capOutput, createEphemeralSubagentExecutor, createSubagentConfigStore, DEFAULT_SUBAGENT_CONFIG, DELEGATE_TASK, findRole, formatDuration, loadRoleCatalog, prepareRoleLaunch, resolveRolePackageResources, resolveTaskRoute, ROLE_TOOL_POLICY_FLAG, type ExecutionPolicySnapshot, type Role } from "@csubj/pi-subagent";
 import { resolveExecutionPolicy } from "./config.ts";
 import { registerCheckoutAdmission } from "./admission.ts";
 import { registerIsolatedExtension } from "./isolated.ts";

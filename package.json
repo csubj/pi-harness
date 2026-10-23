@@ -1,8 +1,8 @@
 {
-  "name": "@henryqw/pi-harness",
+  "name": "@csubj/pi-harness",
   "version": "0.0.0",
   "private": true,
-  "description": "Public Pi extensions by Henry Wang.",
+  "description": "Public Pi extensions by csubj.",
   "keywords": [
     "pi-package"
   ],
@@ -23,36 +23,30 @@
       "./extensions/pi-footer/extensions/footer.ts",
       "./extensions/pi-footer/extensions/open.ts",
       "./extensions/pi-notes/extensions/notes.ts",
-      "./extensions/pi-pr/extensions/pr.ts",
       "./extensions/pi-task-models/extensions/task-models.ts",
       "./extensions/pi-herdr-tools/extensions/index.ts",
-      "./extensions/pi-bark/extensions/bark.ts",
       "./extensions/pi-multi-codex/extensions",
       "./extensions/pi-subagent/extensions/subagent.ts",
       "./extensions/pi-memory/extensions/memory.ts",
       "./extensions/pi-undo/extensions/undo.ts",
       "./extensions/pi-goal/extensions/goal.ts",
       "./extensions/pi-advisor/extensions/advisor.ts",
-      "./extensions/pi-rtk-test/extensions/rtk-test.ts",
       "./extensions/pi-cron/extensions/cron.ts"
-    ],
-    "skills": [
-      "./extensions/pi-pr/skills"
     ]
   },
   "scripts": {
-    "build": "pnpm --filter @henryqw/pi-config-store --filter @henryqw/pi-herdr --filter @henryqw/pi-process --filter @henryqw/pi-task-models --filter @henryqw/pi-subagent --filter @henryqw/pi-ask-question run build",
+    "build": "pnpm --filter @csubj/pi-config-store --filter @csubj/pi-herdr --filter @csubj/pi-process --filter @csubj/pi-task-models --filter @csubj/pi-subagent --filter @csubj/pi-ask-question run build",
     "postinstall": "pnpm run build",
     "test": "node --test scripts/check-package-versions.test.mjs scripts/rebump-versions.test.mjs scripts/publish-decision.test.mjs && node --test 'evals/**/*.test.ts' && node scripts/test-workspaces.mjs",
     "eval": "node evals/run.ts",
-    "test:live": "pnpm --filter @henryqw/pi-auto-compact run test:live",
+    "test:live": "pnpm --filter @csubj/pi-auto-compact run test:live",
     "check:package-versions": "node scripts/check-package-versions.mjs",
     "versions:rebump": "node scripts/rebump-versions.mjs",
     "typecheck": "pnpm --recursive --if-present run typecheck",
     "pack:check": "pnpm --recursive --if-present run pack:check",
-    "docs:dev": "pnpm --filter @henryqw/pi-docs run dev",
-    "docs:build": "pnpm --filter @henryqw/pi-docs run build",
-    "docs:validate": "pnpm --filter @henryqw/pi-docs run validate"
+    "docs:dev": "pnpm --filter @csubj/pi-docs run dev",
+    "docs:build": "pnpm --filter @csubj/pi-docs run build",
+    "docs:validate": "pnpm --filter @csubj/pi-docs run validate"
   },
   "dependencies": {
     "@types/node": "^26.6.5",

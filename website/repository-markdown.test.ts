@@ -36,7 +36,7 @@ test("links relative images to raw GitHub files", () => {
       "![Architecture](./docs/architecture.svg)",
       "extensions/example/README.md"
     ),
-    "![Architecture](https://raw.githubusercontent.com/HenryQW/pi-harness/main/extensions/example/docs/architecture.svg)"
+    "![Architecture](https://raw.githubusercontent.com/csubj/pi-harness/main/extensions/example/docs/architecture.svg)"
   );
 });
 
@@ -50,9 +50,9 @@ test("links extension Markdown files to GitHub", () => {
   assert.equal(
     linkRelativeMarkdownToGitHub(markdown, "extensions/pi-subagent/README.md"),
     [
-      "[orchestration](https://github.com/HenryQW/pi-harness/blob/main/extensions/pi-subagent/docs/orchestration.md#delegation-fields)",
-      "[role](https://github.com/HenryQW/pi-harness/blob/main/extensions/pi-subagent/examples/roles/reviewer.md)",
-      "[context](https://github.com/HenryQW/pi-harness/blob/main/extensions/pi-subagent/CONTEXT.md)",
+      "[orchestration](https://github.com/csubj/pi-harness/blob/main/extensions/pi-subagent/docs/orchestration.md#delegation-fields)",
+      "[role](https://github.com/csubj/pi-harness/blob/main/extensions/pi-subagent/examples/roles/reviewer.md)",
+      "[context](https://github.com/csubj/pi-harness/blob/main/extensions/pi-subagent/CONTEXT.md)",
     ].join("\n")
   );
 });

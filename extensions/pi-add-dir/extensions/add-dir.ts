@@ -9,7 +9,7 @@ import {
 	type AutocompleteSuggestions,
 } from "@earendil-works/pi-tui";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { registerConfigReporting } from "@henryqw/pi-config-store";
+import { registerConfigReporting } from "@csubj/pi-config-store";
 import { Type } from "typebox";
 import {
 	buildContextInjection,

@@ -978,8 +978,8 @@ test("declares a balanced review task and invokes the configured primary route",
 	};
 	memoryExtension({ events, on() {}, registerCommand() {}, registerTool() {} } as unknown as ExtensionAPI);
 	const discovered: unknown[] = [];
-	events.on("@henryqw/pi-task-models:model-task-response", (payload) => { discovered.push(payload); });
-	events.emit("@henryqw/pi-task-models:model-task-request", { requestId: "review-task" });
+	events.on("@csubj/pi-task-models:model-task-response", (payload) => { discovered.push(payload); });
+	events.emit("@csubj/pi-task-models:model-task-request", { requestId: "review-task" });
 	assert.deepEqual(discovered.slice(0, 2), [MEMORY_REVIEW_TASK, MEMORY_PREPARE_TASK].map((task) => ({ requestId: "review-task", task })));
 	assert.equal((discovered[2] as { task: { id: string } }).task.id, "pi-memory/promoteEntries");
 

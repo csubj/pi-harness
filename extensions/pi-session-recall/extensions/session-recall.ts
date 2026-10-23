@@ -4,7 +4,7 @@
 import { getAgentDir, keyHint, truncateToVisualLines } from "@earendil-works/pi-coding-agent";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { StringEnum } from "@earendil-works/pi-ai";
-import { extensionConfigDir } from "@henryqw/pi-config-store";
+import { extensionConfigDir } from "@csubj/pi-config-store";
 import { Text, truncateToWidth } from "@earendil-works/pi-tui";
 import { Type, type TSchema } from "typebox";
 import { realpathSync } from "node:fs";

@@ -10,12 +10,12 @@ import {
 	type ExtensionContext,
 	type SlashCommandInfo,
 } from "@earendil-works/pi-coding-agent";
-import { extensionConfigDir, extensionConfigPath } from "@henryqw/pi-config-store";
+import { extensionConfigDir, extensionConfigPath } from "@csubj/pi-config-store";
 import type {
 	EphemeralSubagentExecutor,
 	EphemeralSubagentResult,
 	EphemeralSubagentRunInput,
-} from "@henryqw/pi-subagent";
+} from "@csubj/pi-subagent";
 import promptCreatorExtension, { parseDraftOutput } from "../extensions/prompt-creator.ts";
 
 type Handler = (event: any, ctx: ExtensionContext) => unknown;

@@ -83,9 +83,9 @@ function harness(options: { hasUI?: boolean; before?: Handler; after?: (session:
 	};
 }
 
-const piPrDraft: Handler = (event) => ({
-	// pi-pr/extensions/pr.ts 1008-1016: spread prior drafts, append a hidden workflow message, continue.
-	entries: [...event.entries, { type: "custom_message", customType: "pi-pr-workflow", display: false, content: "PR workflow" }],
+const workflowDraft: Handler = (event) => ({
+	// A workflow extension spreads prior drafts, appends a hidden workflow message, and continues.
+	entries: [...event.entries, { type: "custom_message", customType: "example-workflow", display: false, content: "Example workflow" }],
 	continue: true,
 });
 const autoCompactDraft: Handler = (event, ctx) => {
@@ -170,17 +170,17 @@ test("settle appends a hidden continuation after the assistant's final message a
 });
 
 test("goal yields to an existing continuation and keeps a later handler's draft", async () => {
-	const yielding = harness({ before: piPrDraft });
+	const yielding = harness({ before: workflowDraft });
 	await yielding.call({ action: "create", objective: "Ship" });
 	assert.equal(await yielding.settle(), true);
-	assert.deepEqual(yielding.manager.getBranch().filter((entry) => entry.type === "custom_message").map((entry) => entry.type === "custom_message" && entry.customType), ["pi-pr-workflow"]);
+	assert.deepEqual(yielding.manager.getBranch().filter((entry) => entry.type === "custom_message").map((entry) => entry.type === "custom_message" && entry.customType), ["example-workflow"]);
 	const handler = yielding.handlers.get("agent_before_settle")![0]!;
 	assert.equal(await handler({ type: "agent_before_settle", entries: [], continue: true, outcome: "completed" }, yielding.ctx), undefined);
 
-	const both = harness({ after: () => piPrDraft });
+	const both = harness({ after: () => workflowDraft });
 	await both.call({ action: "create", objective: "Ship" });
 	assert.equal(await both.settle(), true);
-	assert.deepEqual(both.manager.getBranch().slice(-2).map((entry) => entry.type === "custom_message" && entry.customType), [CONTINUATION_MESSAGE, "pi-pr-workflow"]);
+	assert.deepEqual(both.manager.getBranch().slice(-2).map((entry) => entry.type === "custom_message" && entry.customType), [CONTINUATION_MESSAGE, "example-workflow"]);
 });
 
 test("goal continuation coexists with pi-auto-compact after it", async () => {

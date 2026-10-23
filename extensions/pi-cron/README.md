@@ -1,13 +1,13 @@
-# `@henryqw/pi-cron`
+# `@csubj/pi-cron`
 
 Run scheduled prompts in fresh Pi sessions while any Pi session with this extension is open. Each job selects its Role, model, and thinking level. Open saved run sessions to inspect results.
 
 ## Install
 
 ```bash
-pi install npm:@henryqw/pi-task-models
-pi install npm:@henryqw/pi-subagent
-pi install npm:@henryqw/pi-cron
+pi install npm:@csubj/pi-task-models
+pi install npm:@csubj/pi-subagent
+pi install npm:@csubj/pi-cron
 ```
 
 Configure the job profiles in `/task-models`. Add a job to the config file below. Run `/cron` to check its next slot.
@@ -16,8 +16,8 @@ Configure the job profiles in `/task-models`. Add a job to the config file below
 
 | Package | Relationship | Purpose |
 | --- | --- | --- |
-| [`@henryqw/pi-subagent`](https://pi.henry.wang/extensions/pi-subagent) | Required | Provides Roles and runs each job with bounded limits. |
-| [`@henryqw/pi-task-models`](https://pi.henry.wang/extensions/pi-task-models) | Required | Resolves `modelClass` and explicit model routes. |
+| [`@csubj/pi-subagent`](https://github.com/csubj/pi-harness/tree/main/extensions/pi-subagent) | Required | Provides Roles and runs each job with bounded limits. |
+| [`@csubj/pi-task-models`](https://github.com/csubj/pi-harness/tree/main/extensions/pi-task-models) | Required | Resolves `modelClass` and explicit model routes. |
 
 ## Use
 

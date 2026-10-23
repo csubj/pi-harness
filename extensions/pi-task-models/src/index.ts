@@ -10,7 +10,7 @@ import {
 	registerConfigReporting,
 	type ConfigIssue,
 	type FieldParser,
-} from "@henryqw/pi-config-store";
+} from "@csubj/pi-config-store";
 
 export const PROFILE_NAMES = ["fast", "balanced", "frontier", "fav"] as const;
 export type ProfileName = (typeof PROFILE_NAMES)[number];
@@ -54,8 +54,8 @@ export type ResolvedTaskRoute = {
 };
 
 const CODEX_ALIAS = /^openai-codex-(?:[2-9]|[1-9]\d+)$/;
-const MODEL_TASK_REQUEST_EVENT = "@henryqw/pi-task-models:model-task-request";
-const MODEL_TASK_RESPONSE_EVENT = "@henryqw/pi-task-models:model-task-response";
+const MODEL_TASK_REQUEST_EVENT = "@csubj/pi-task-models:model-task-request";
+const MODEL_TASK_RESPONSE_EVENT = "@csubj/pi-task-models:model-task-response";
 const registeredModelTasks = new WeakMap<object, Map<string, ModelTask>>();
 let modelTaskRequestNumber = 0;
 

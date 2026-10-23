@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-readonly repository="HenryQW/pi-harness"
+readonly repository="csubj/pi-harness"
 readonly workflow="publish.yml"
 check_only=false
 

@@ -16,7 +16,7 @@ README contract:
 - Start links to local files with `./` (or `../` for parent paths): use `./docs/auto-compact-flow.svg`, not `docs/auto-compact-flow.svg`, or `docs:build` fails.
 -->
 
-# `@henryqw/<package>`
+# `@csubj/<package>`
 
 <State the user outcome in one to three short sentences. Attribution and meaningful images may follow the introduction.>
 
@@ -28,18 +28,18 @@ README contract:
 ## Install
 
 ```bash
-pi install npm:@henryqw/<package>
+pi install npm:@csubj/<package>
 ```
 
 <After the command, include only prerequisites and required setup. Add a concrete verification step when setup is not trivial. Do not repeat generic Pi version requirements enforced by peerDependencies.>
 
-<!-- Optional: include only when another package is required, improves this package, or consumes it. Always use this exact table. Add one alphabetized row per package. Relationship must be Required, Improves, or Consumer. Purpose must not repeat the relationship word. Link companion docs with https://pi.henry.wang/extensions/<directory>. -->
+<!-- Optional: include only when another package is required, improves this package, or consumes it. Always use this exact table. Add one alphabetized row per package. Relationship must be Required, Improves, or Consumer. Purpose must not repeat the relationship word. Link companion docs with https://github.com/csubj/pi-harness/tree/main/extensions/<directory>. -->
 ## Works with
 
 | Package | Relationship | Purpose |
 | --- | --- | --- |
-| [`@henryqw/<companion-a>`](https://pi.henry.wang/extensions/<companion-a>) | Required | <What the package provides.> |
-| [`@henryqw/<companion-b>`](https://pi.henry.wang/extensions/<companion-b>) | Improves | <What becomes better.> |
+| [`@csubj/<companion-a>`](https://github.com/csubj/pi-harness/tree/main/extensions/<companion-a>) | Required | <What the package provides.> |
+| [`@csubj/<companion-b>`](https://github.com/csubj/pi-harness/tree/main/extensions/<companion-b>) | Improves | <What becomes better.> |
 
 <!-- Optional: include only when users need package-specific usage information. Start with the shortest successful workflow and its expected result, then the single complete discovery table when two or more interfaces exist. Use exactly these columns and lowercase types such as command, tool, skill, shortcut, or ui. Explain that commands are for humans and tools are for agents when both exist; identify other audiences where needed. Include command arguments needed for use. Do not repeat partial inventories in later sections. For one trivial interface, concise prose or code is enough. Use H3 headings only when an interface needs more detail. -->
 ## Use

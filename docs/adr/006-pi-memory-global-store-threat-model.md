@@ -5,7 +5,7 @@
 
 ## Context
 
-`@henryqw/pi-memory` writes `MEMORY.md` and `USER.md` to a user-synced directory. A package-level permission gate would not constrain an agent that already has local filesystem access.
+`@csubj/pi-memory` writes `MEMORY.md` and `USER.md` to a user-synced directory. A package-level permission gate would not constrain an agent that already has local filesystem access.
 
 ## Decision
 

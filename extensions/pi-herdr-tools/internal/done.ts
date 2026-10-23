@@ -1,6 +1,6 @@
 import { tmpdir } from "node:os";
 import type { ExecResult, ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { createHerdrClient, withWorktreeLock } from "@henryqw/pi-herdr";
+import { createHerdrClient, withWorktreeLock } from "@csubj/pi-herdr";
 
 type SnapshotPane = { tab_id?: unknown; cwd?: unknown };
 type TabEntry = { tab_id?: unknown; workspace_id?: unknown; label?: unknown };

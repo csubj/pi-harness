@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
 import type { ExtensionAPI, ExtensionContext, SessionEntry } from "@earendil-works/pi-coding-agent";
 import { getCapabilities, hyperlink, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
-import { registerConfigReporting } from "@henryqw/pi-config-store";
+import { registerConfigReporting } from "@csubj/pi-config-store";
 import { createOpenInConfigStore } from "./open-in-config.ts";
 import { configuredOpenUri } from "./open.ts";
 import { createFooterConfigStore, paintFooter } from "./footer-config.ts";
@@ -366,14 +366,13 @@ export default function footerExtension(pi: ExtensionAPI): void {
 					const branch = reportedBranch === "detached" && gitSummary.detachedOid ? `@${gitSummary.detachedOid}` : reportedBranch;
 					const openUri = configuredOpenUri(ctx.cwd);
 					const extensionStatuses = data.getExtensionStatuses();
-					const prStatus = sanitizeStatus(extensionStatuses.get("pi-pr") ?? "");
 					const codegraph = activeCodegraphCalls.size > 0
 						? `${paintFooter(theme, footerColors.codegraphActive, "accent", "●")} CG`
 						: sanitizeStatus(extensionStatuses.get("pi-codegraph") ?? "");
 					const quotaStatus = sanitizeStatus(extensionStatuses.get(QUOTA_STATUS_KEY) ?? "");
 					const externalStatuses: string[] = [];
 					for (const [key, value] of [...extensionStatuses].sort(([a], [b]) => a.localeCompare(b))) {
-						if (key === "pi-pr" || key === "pi-codegraph" || key === QUOTA_STATUS_KEY) continue;
+						if (key === "pi-codegraph" || key === QUOTA_STATUS_KEY) continue;
 						const text = sanitizeStatus(value);
 						if (text) externalStatuses.push(text);
 					}
@@ -407,7 +406,7 @@ export default function footerExtension(pi: ExtensionAPI): void {
 					const checkoutText = paintFooter(theme, footerColors.branch, linkUri ? "accent" : "dim", checkout);
 					const checkoutLink = linkUri ? hyperlink(checkoutText, linkUri) : checkoutText;
 					const checkoutStatus = gitSummary.badges ? `${checkoutLink} ${paintFooter(theme, footerColors.gitStatus, "dim", gitSummary.badges)}` : checkoutLink;
-					const identityLine = prStatus ? `${identity}${checkoutStatus}${plainSep(" · ")}${prStatus}` : `${identity}${checkoutStatus}`;
+					const identityLine = `${identity}${checkoutStatus}`;
 					const firstLine = quotaStatus ? align(identityLine, quotaStatus, width, ellipsis) : identityLine;
 					const lines = [
 						firstLine,

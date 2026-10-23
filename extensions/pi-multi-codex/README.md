@@ -1,4 +1,4 @@
-# `@henryqw/pi-multi-codex`
+# `@csubj/pi-multi-codex`
 
 Use multiple ChatGPT Codex OAuth accounts with quota-based selection and HTTP 429 failover.
 
@@ -8,16 +8,16 @@ Use multiple ChatGPT Codex OAuth accounts with quota-based selection and HTTP 42
 ## Install
 
 ```bash
-pi install npm:@henryqw/pi-multi-codex
+pi install npm:@csubj/pi-multi-codex
 ```
 
 ## Works with
 
 | Package | Relationship | Purpose |
 | --- | --- | --- |
-| [`@henryqw/pi-footer`](https://pi.henry.wang/extensions/pi-footer) | Improves | Shows the active slot's quota status. |
-| [`@henryqw/pi-subagent`](https://pi.henry.wang/extensions/pi-subagent) | Improves | Delegated children keep Main's active Codex slot. |
-| [`@henryqw/pi-task-models`](https://pi.henry.wang/extensions/pi-task-models) | Improves | Numbered slots share one profile route. |
+| [`@csubj/pi-footer`](https://github.com/csubj/pi-harness/tree/main/extensions/pi-footer) | Improves | Shows the active slot's quota status. |
+| [`@csubj/pi-subagent`](https://github.com/csubj/pi-harness/tree/main/extensions/pi-subagent) | Improves | Delegated children keep Main's active Codex slot. |
+| [`@csubj/pi-task-models`](https://github.com/csubj/pi-harness/tree/main/extensions/pi-task-models) | Improves | Numbered slots share one profile route. |
 
 ## Use
 
@@ -31,7 +31,7 @@ Commands and UI entries are for users.
 | `/codex-status` | command | Show shared usage snapshots and five-hour quota blocks without network waits. |
 | `/codex-switch` | command | Select an authenticated, scope-allowed slot for the current Codex model. |
 | Pi model selector (`OpenAI Codex (legacy)`, `OpenAI Codex #<n>`) | ui | Choose an authenticated account slot. |
-| Pi status `pi-multi-codex` | ui | Show active fresh quota, five-hour limit countdown, or stale/unavailable state. `@henryqw/pi-footer` displays it. |
+| Pi status `pi-multi-codex` | ui | Show active fresh quota, five-hour limit countdown, or stale/unavailable state. `@csubj/pi-footer` displays it. |
 
 Status stays `unavailable` until a successful usage snapshot. Footer and command reset countdowns use five hours for Free, Go, and Plus; seven days for Pro Lite and other tiers.
 

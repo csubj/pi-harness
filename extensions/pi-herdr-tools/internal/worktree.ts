@@ -1,5 +1,5 @@
 import { setTimeout as delay } from "node:timers/promises";
-import { herdrCommandFailure, startPiAgent, type HerdrClient, type HerdrExecResult } from "@henryqw/pi-herdr";
+import { herdrCommandFailure, startPiAgent, type HerdrClient, type HerdrExecResult } from "@csubj/pi-herdr";
 
 type Herdr = HerdrClient<{ cwd: string }>;
 

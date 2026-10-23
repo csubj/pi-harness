@@ -15,7 +15,7 @@ const workspaces = ["extensions", "packages"]
 
 if (!workspaces.length) throw new Error("No workspace test scripts found.");
 
-const prioritizedWorkspaces = ["@henryqw/pi-subagent"];
+const prioritizedWorkspaces = ["@csubj/pi-subagent"];
 const scheduledWorkspaces = [
 	...prioritizedWorkspaces.filter((workspace) => workspaces.includes(workspace)),
 	...workspaces.filter((workspace) => !prioritizedWorkspaces.includes(workspace)),
@@ -25,7 +25,7 @@ const failures = [];
 function run(workspace) {
 	return new Promise((resolve) => {
 		const args = ["--filter", workspace, "run", "test"];
-		if (workspace === "@henryqw/pi-subagent") args.push("--", "--test-concurrency=2", ...testArgs);
+		if (workspace === "@csubj/pi-subagent") args.push("--", "--test-concurrency=2", ...testArgs);
 		else if (testArgs.length) args.push("--", ...testArgs);
 		const child = spawn(packageManagerExecPath, args, { stdio: "inherit" });
 		child.once("error", (error) => {

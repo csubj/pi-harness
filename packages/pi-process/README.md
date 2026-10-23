@@ -1,17 +1,17 @@
-# `@henryqw/pi-process`
+# `@csubj/pi-process`
 
 Run one argv-only child process. Limit UTF-8 output and execution time. Cancel the process when necessary.
 
 ## Install
 
 ```bash
-npm install @henryqw/pi-process
+npm install @csubj/pi-process
 ```
 
 ## Use
 
 ```ts
-import { spawnBounded } from "@henryqw/pi-process";
+import { spawnBounded } from "@csubj/pi-process";
 
 const result = await spawnBounded("git", ["status"], { cwd: process.cwd() });
 if (result.code !== 0 || result.killed) throw new Error(result.stderr);

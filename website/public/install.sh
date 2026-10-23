@@ -1,5 +1,5 @@
 #!/bin/sh
-# Henry Pi Harness installer.
+# csubj Pi Harness installer.
 # The extension list between the generated markers comes from extensions/*/package.json.
 # Do not edit that list by hand.
 
@@ -12,32 +12,28 @@ HERDR_INSTALLER_URL="https://herdr.dev/install.sh"
 HERDR_LATEST_URL="https://herdr.dev/latest.json"
 HERDR_MIN_VERSION="0.7.4"
 HERDR_SUBAGENT_MIN_VERSION="0.9.0"
-SUBAGENT_PACKAGE="@henryqw/pi-subagent"
-RETIRED_PACKAGE_SOURCES="npm:@henryqw/pi-auto-dag npm:@henryqw/pi-orchestrator"
+SUBAGENT_PACKAGE="@csubj/pi-subagent"
 
 # BEGIN GENERATED EXTENSIONS
 EXTENSIONS='
-@henryqw/pi-add-dir
-@henryqw/pi-advisor
-@henryqw/pi-ask-question
-@henryqw/pi-auto-compact
-@henryqw/pi-bark
-@henryqw/pi-codegraph
-@henryqw/pi-cron
-@henryqw/pi-deps
-@henryqw/pi-footer
-@henryqw/pi-goal
-@henryqw/pi-herdr-tools
-@henryqw/pi-memory
-@henryqw/pi-multi-codex
-@henryqw/pi-notes
-@henryqw/pi-pr
-@henryqw/pi-prompt-creator
-@henryqw/pi-rtk-test
-@henryqw/pi-session-recall
-@henryqw/pi-subagent
-@henryqw/pi-task-models
-@henryqw/pi-undo
+@csubj/pi-add-dir
+@csubj/pi-advisor
+@csubj/pi-ask-question
+@csubj/pi-auto-compact
+@csubj/pi-codegraph
+@csubj/pi-cron
+@csubj/pi-deps
+@csubj/pi-footer
+@csubj/pi-goal
+@csubj/pi-herdr-tools
+@csubj/pi-memory
+@csubj/pi-multi-codex
+@csubj/pi-notes
+@csubj/pi-prompt-creator
+@csubj/pi-session-recall
+@csubj/pi-subagent
+@csubj/pi-task-models
+@csubj/pi-undo
 '
 # END GENERATED EXTENSIONS
 
@@ -431,47 +427,6 @@ choose_extensions() {
   done
 }
 
-list_package_sources() {
-  if ! installed_sources=$("$pi_bin" list); then
-    die "Could not list installed Pi package sources."
-  fi
-  printf '%s\n' "$installed_sources" | awk '
-    /^User packages:$/ { scope = "user" }
-    /^Project packages:$/ { scope = "project" }
-    /^  npm:[^[:space:]]+( \(filtered\))?$/ {
-      if (!scope) exit 1
-      sub(/^  /, ""); sub(/ \(filtered\)$/, "")
-      print scope " " $0
-    }
-  ' || die "Could not parse installed Pi package sources."
-}
-
-remove_retired_package_sources() {
-  case "$1" in
-    "$SUBAGENT_PACKAGE") retired_sources=$RETIRED_PACKAGE_SOURCES ;;
-    "@henryqw/pi-herdr-tools") retired_sources="npm:@henryqw/pi-herdr-btw npm:@henryqw/pi-herdr-clone npm:@henryqw/pi-herdr-rename npm:@henryqw/pi-herdr-done" ;;
-    "@henryqw/pi-footer") retired_sources="npm:@henryqw/pi-open-in" ;;
-    *) return 0 ;;
-  esac
-  installed_sources=$(list_package_sources)
-  while read -r scope source; do
-    for retired in $retired_sources; do
-      case "$source" in "$retired"|"$retired"@*) ;; *) continue ;; esac
-      info "Removing retired $scope package source $source..."
-      set -- "$source"
-      [ "$scope" != project ] || set -- "$@" --local
-      "$pi_bin" uninstall "$@" || die "Could not remove retired Pi package source $source."
-      remaining_sources=$(list_package_sources)
-      if printf '%s\n' "$remaining_sources" | grep -Fx -e "$scope $source" >/dev/null; then
-        die "Retired Pi package source $source is still installed."
-      fi
-      success "Removed retired Pi package source $source."
-    done
-  done <<EOF
-$installed_sources
-EOF
-}
-
 install_extensions() {
   installed=0
   total=0
@@ -482,7 +437,6 @@ install_extensions() {
   info "Installing extensions..."
   for extension in $selected_extensions; do
     "$pi_bin" install "npm:$extension" >/dev/null
-    remove_retired_package_sources "$extension"
     installed=$((installed + 1))
 
     if [ -t 1 ] && [ "${TERM:-}" != "dumb" ]; then
@@ -521,7 +475,7 @@ main() {
   extension_count=$(count_extensions)
   [ "$extension_count" -gt 0 ] || die "No installable Pi extensions were found."
 
-  printf '\nHenry Pi Harness installer\nPi + Herdr + selected extensions\n'
+  printf '\ncsubj Pi Harness installer\nPi + Herdr + selected extensions\n'
   choose_extensions
   select_herdr_minimum
   ensure_pi

@@ -1,4 +1,4 @@
-# `@henryqw/pi-codegraph`
+# `@csubj/pi-codegraph`
 
 Prepare a separate [CodeGraph](https://github.com/colbymchenry/codegraph) index for each Git worktree and keep it current while Pi runs. Agents use `codegraph_explore` to get relevant source and call paths.
 
@@ -6,7 +6,7 @@ Prepare a separate [CodeGraph](https://github.com/colbymchenry/codegraph) index 
 
 ```bash
 npm install -g @colbymchenry/codegraph
-pi install npm:@henryqw/pi-codegraph
+pi install npm:@csubj/pi-codegraph
 ```
 
 Put the `codegraph` executable on Pi's `PATH`. Keep Pi's built-in MCP support enabled for automatic index updates. The extension registers its MCP server; no MCP configuration is necessary.
@@ -16,7 +16,7 @@ Put the `codegraph` executable on Pi's `PATH`. Keep Pi's built-in MCP support en
 | Package | Relationship | Purpose |
 | --- | --- | --- |
 | [`@colbymchenry/codegraph`](https://github.com/colbymchenry/codegraph) | Required | Builds indexes and answers `codegraph explore` queries. |
-| [`@henryqw/pi-footer`](https://pi.henry.wang/extensions/pi-footer) | Improves | Shows index status, setup progress, and direct tool activity. |
+| [`@csubj/pi-footer`](https://github.com/csubj/pi-harness/tree/main/extensions/pi-footer) | Improves | Shows index status, setup progress, and direct tool activity. |
 
 ## Use
 

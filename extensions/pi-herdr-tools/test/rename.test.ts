@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { withWorktreeLock } from "@henryqw/pi-herdr";
+import { withWorktreeLock } from "@csubj/pi-herdr";
 import herdrRenameExtension from "../internal/rename.ts";
 
 type Handler = (event: any, ctx: ExtensionContext) => unknown;
