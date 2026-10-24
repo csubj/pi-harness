@@ -114,7 +114,9 @@ Status clears on answer, cancellation, failure, `/reload`, session switch, or ex
 
 ![Worktree removal and primary-checkout update.](./docs/done-flow.svg)
 
-`/done` requires `HERDR_ENV=1`, `HERDR_WORKSPACE_ID`, and `HERDR_TAB_ID`. Commit or discard changes, then confirm removal; declining changes nothing. Normal and forced completion wait for idle Pi.
+`/done` requires `HERDR_ENV=1`, `HERDR_PANE_ID`, and `HERDR_TAB_ID`. Commit or discard changes, then confirm removal; declining changes nothing. Normal and forced completion wait for idle Pi.
+
+`/done` gets the checkout from the Herdr workspace of the current pane, not from the Pi working directory. Pi can run in a subdirectory of the checkout. `/done` refuses a workspace that is not a linked Git worktree, and it then changes nothing.
 
 Normal removal rejects dirty worktrees and checkout use by other workspaces. Close listed tabs and retry; labels identify them, or IDs without labels. Primary-checkout tabs do not block removal or updates.
 
