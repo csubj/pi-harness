@@ -2229,12 +2229,12 @@ test("a direct worker waits for Pi to retry a turn that ended with a provider er
 			const fake = fakeHerdr(cwd, () => "answer after retry");
 			let waits = 0;
 			let lastDone: any;
-			const exec = async (args: string[], options?: any) => {
-				if (args[0] !== "agent" || args[1] !== "wait") return await fake.exec(args, options);
+			const exec = async (args: string[]) => {
+				if (args[0] !== "agent" || args[1] !== "wait") return await fake.exec(args);
 				waits += 1;
 				if (waits === 1) {
 					// The first turn ends with HTTP 429. Pi saves it as an error turn, and Herdr reports done.
-					const response = await fake.exec(args, options);
+					const response = await fake.exec(args);
 					const start = fake.calls.find(([kind, command]) => kind === "agent" && command === "start")!;
 					const sessionFile = start[start.indexOf("--session") + 1]!;
 					const lines = (await readFile(sessionFile, "utf8")).trimEnd().split("\n").map((line) => JSON.parse(line));
@@ -2249,7 +2249,7 @@ test("a direct worker waits for Pi to retry a turn that ended with a provider er
 					working.result.agent.agent_status = "working";
 					return { code: 0, stdout: JSON.stringify(working), stderr: "" };
 				}
-				return await fake.exec(args, options);
+				return await fake.exec(args);
 			};
 			const app = harness({ cwd, herdr: exec });
 			app.handlers.get("session_start")?.({}, app.ctx);
