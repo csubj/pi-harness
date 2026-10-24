@@ -601,8 +601,11 @@ async function herdrEnvironment(run: (cwd: string) => Promise<void>) {
 	process.env.HERDR_ENV = "1";
 	process.env.HERDR_WORKSPACE_ID = "w-test";
 	process.env.HERDR_PANE_ID = "w-test:p1";
-	try { await run(await realpath("/tmp")); }
+	// A private directory keeps /subagent inventory away from other tests' repositories in the shared /tmp.
+	const cwd = await realpath(await mkdtemp(join(tmpdir(), "pi-subagent-herdr-cwd-")));
+	try { await run(cwd); }
 	finally {
+		await rm(cwd, { recursive: true, force: true });
 		for (const [index, key] of ["HERDR_ENV", "HERDR_WORKSPACE_ID", "HERDR_PANE_ID"].entries()) {
 			if (previous[index] === undefined) delete process.env[key];
 			else process.env[key] = previous[index];

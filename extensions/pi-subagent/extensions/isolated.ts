@@ -1,3 +1,4 @@
+import { lstat } from "node:fs/promises";
 import { basename, relative, sep } from "node:path";
 import type { JsonValue } from "@earendil-works/pi-ai";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
@@ -914,10 +915,20 @@ export function registerIsolatedExtension(pi: ExtensionAPI, options: RegisterIso
 		const invalidIds: string[] = [];
 		const selectorOf = (root: string) => found.repos.find((item) => item.root === root)?.repo
 			?? (isWithin(found.base, root) ? relative(found.base, root).split(sep).join("/") : root);
+		const warnings = discoveryWarnings(found);
 		for (const { repo, root } of found.repos) {
 			if (!current()) throw new Error("Session or branch changed; reopen /subagent.");
-			const listed = await getComponents().runner.listRequests(root);
-			const leaseLive = await getComponents().runner.hasProductiveRunLease(root);
+			let listed: Awaited<ReturnType<IsolatedRunner["listRequests"]>>;
+			let leaseLive: boolean;
+			try {
+				listed = await getComponents().runner.listRequests(root);
+				leaseLive = await getComponents().runner.hasProductiveRunLease(root);
+			} catch (error) {
+				// A repository removed after discovery has no requests to list. Other failures stay visible.
+				if ((error as NodeJS.ErrnoException).code === "ENOENT" && await lstat(root).then(() => false, () => true)) continue;
+				warnings.push(`Isolated inventory could not read repo ${repo}: ${boundedPublicText(error instanceof Error ? error.message : String(error))}`);
+				continue;
+			}
 			for (const request of listed.requests) requests.push({ ...request, root: request.root ?? root, repo, leaseLive, checkout: root });
 			invalidIds.push(...listed.invalidIds.map((id) => `${repo}/${id}`));
 		}
@@ -929,7 +940,7 @@ export function registerIsolatedExtension(pi: ExtensionAPI, options: RegisterIso
 		}
 		invalidIds.push(...orphans.invalidIds);
 		return { root: found.base, leaseLive: requests.some((request) => request.leaseLive), requests,
-			invalidIds: [...new Set(invalidIds)], warnings: discoveryWarnings(found) };
+			invalidIds: [...new Set(invalidIds)], warnings };
 	};
 	return {
 		async inventory(cwd, current) {
@@ -967,7 +978,10 @@ export function registerIsolatedExtension(pi: ExtensionAPI, options: RegisterIso
 				const found = await discoverRepos(cwd);
 				const lines: string[] = [];
 				for (const { repo, root: child } of found.repos) {
-					const listed = await getComponents().runner.listRequests(child);
+					const listed = await getComponents().runner.listRequests(child).catch(async (error: unknown) => {
+						if ((error as NodeJS.ErrnoException).code === "ENOENT" && await lstat(child).then(() => false, () => true)) return { requests: [], invalidIds: [] };
+						throw error;
+					});
 					if (!listed.requests.length && !listed.invalidIds.length) continue;
 					lines.push(`repo ${repo}:`, ...await recoveryLines(child));
 				}

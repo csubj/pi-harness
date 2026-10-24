@@ -192,6 +192,7 @@ function response(method: string, continuation = false, state: RunState = PRIVAT
 function createHarness(options: {
 	runner?: IsolatedExtensionComponents["runner"];
 	resolveRoot?: IsolatedExtensionComponents["resolveRoot"];
+	patchRunner?: Record<string, unknown>;
 	allOrphans?: { requests: Array<Record<string, unknown> & { primary: string }>; invalidIds: string[] };
 	responseState?: RunState;
 	inventoryStates?: RunState[];
@@ -281,7 +282,7 @@ function createHarness(options: {
 		componentOptions = createdOptions;
 		options.onCreate?.(createdOptions);
 		return {
-			runner: options.runner ?? runner,
+			runner: options.runner ?? (options.patchRunner ? Object.assign(runner, options.patchRunner) : runner),
 			resolveRoot: options.resolveRoot ?? (async (cwd, operation) => {
 				rootCalls.push({ cwd, context: operation });
 				return CANONICAL_ROOT;
@@ -1713,4 +1714,28 @@ test("inventory outside a Git repository lists the requests of each Repository t
 	// A Git failure inside a repository is not a parent directory.
 	const failing = createHarness({ resolveRoot: async () => { throw new Error("git timed out"); } });
 	await assert.rejects(failing.surface.inventory(child), /git timed out/);
+});
+
+test("inventory skips a repository that was removed after discovery and reports other read failures", async (t) => {
+	const parent = await realpath(await mkdtemp(join(tmpdir(), "pi-subagent-inventory-race-")));
+	t.after(() => rm(parent, { recursive: true, force: true }));
+	for (const name of ["gone", "broken"]) {
+		await mkdir(join(parent, name), { recursive: true });
+		execFileSync("git", ["init", "-q", join(parent, name)]);
+	}
+	const harness = createHarness({
+		resolveRoot: async (cwd) => { if (cwd === parent) throw new Error("not a Git checkout"); return cwd; },
+		patchRunner: {
+			async listRequests(root: string) {
+				if (root.endsWith("gone")) {
+					await rm(root, { recursive: true, force: true });
+					throw Object.assign(new Error(`ENOENT: no such file or directory, realpath '${root}'`), { code: "ENOENT" });
+				}
+				throw new Error("state store is unreadable");
+			},
+		},
+	});
+	const inventory = await harness.surface.inventory(parent);
+	assert.deepEqual(inventory.requests, []);
+	assert.deepEqual(inventory.warnings, ["Isolated inventory could not read repo broken: state store is unreadable"]);
 });
