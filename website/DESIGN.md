@@ -1,5 +1,5 @@
 ---
-name: csubj Pi Harness
+name: hcflabs Pi Harness
 description: Personal, documentation-first catalogue for focused Pi extensions.
 colors:
   paper: "oklch(0.949 0.007 88.6)"
@@ -143,13 +143,13 @@ components:
     padding: "{spacing.card}"
 ---
 
-# Design System: csubj Pi Harness
+# Design System: hcflabs Pi Harness
 
 ## Overview
 
 **Creative North Star: "The Personal Engineering Notebook"**
 
-csubj Pi Harness pairs a warm paper canvas with ink-navy type and a single utility-blue accent. It is a proof-driven place for serious Pi tooling. Concise sans type, monospaced package names, and thin rules keep it exact.
+hcflabs Pi Harness pairs a warm paper canvas with ink-navy type and a single utility-blue accent. It is a proof-driven place for serious Pi tooling. Concise sans type, monospaced package names, and thin rules keep it exact.
 
 The interface is intentionally quiet. It uses flat, bordered surfaces and sparse color to support scanning instead of treating a documentation catalogue like a marketing campaign. Dark mode keeps the same hierarchy on a deep navy work surface.
 

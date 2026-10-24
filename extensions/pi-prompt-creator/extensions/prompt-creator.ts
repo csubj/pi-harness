@@ -10,18 +10,18 @@ import {
 	type ExtensionContext,
 	type SessionEntry,
 } from "@earendil-works/pi-coding-agent";
-import { createConfigStore, field, parsers, registerConfigReporting } from "@csubj/pi-config-store";
+import { createConfigStore, field, parsers, registerConfigReporting } from "@hcflabs/pi-config-store";
 import {
 	createEphemeralSubagentExecutor,
 	resolveRoleLaunch,
 	type EphemeralSubagentExecutor,
 	type Role,
-} from "@csubj/pi-subagent";
+} from "@hcflabs/pi-subagent";
 import {
 	registerModelTask,
 	registerTaskModelsConfigReporting,
 	type ModelTask,
-} from "@csubj/pi-task-models";
+} from "@hcflabs/pi-task-models";
 
 const EXTENSION_ID = "pi-prompt-creator";
 const WIDGET_KEY = EXTENSION_ID;

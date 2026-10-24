@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
 import type { ExtensionAPI, ExtensionContext, SessionEntry } from "@earendil-works/pi-coding-agent";
 import { getCapabilities, hyperlink, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
-import { registerConfigReporting } from "@csubj/pi-config-store";
+import { registerConfigReporting } from "@hcflabs/pi-config-store";
 import { createOpenInConfigStore } from "./open-in-config.ts";
 import { configuredOpenUri } from "./open.ts";
 import { createFooterConfigStore, paintFooter } from "./footer-config.ts";

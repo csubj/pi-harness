@@ -1,6 +1,6 @@
 import { buildSessionContext, type ExtensionAPI, type ExtensionContext, type Theme } from "@earendil-works/pi-coding-agent";
 import { truncateToWidth, wrapTextWithAnsi } from "@earendil-works/pi-tui";
-import { executeTaskRoutes, registerModelTask, registerTaskModelsConfigReporting, type ModelTask } from "@csubj/pi-task-models";
+import { executeTaskRoutes, registerModelTask, registerTaskModelsConfigReporting, type ModelTask } from "@hcflabs/pi-task-models";
 import { buildMergeTranscript, tailBytes } from "./merge.ts";
 import { configuredTaskRoutes } from "./task-models.ts";
 

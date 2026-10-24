@@ -639,7 +639,7 @@ export interface ConfigReporter {
 	report(ctx: Pick<ExtensionContext, "hasUI" | "ui">, store: Pick<ReportableConfig, "extensionId" | "path">, result: ConfigLoad<unknown>): void;
 }
 
-const REPORTED = Symbol.for("@csubj/pi-config-store/reported");
+const REPORTED = Symbol.for("@hcflabs/pi-config-store/reported");
 
 /**
  * Issues shown in this session. Pi loads each extension, and so each copy of this module, separately,

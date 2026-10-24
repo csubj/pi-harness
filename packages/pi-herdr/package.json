@@ -1,6 +1,6 @@
 {
-  "name": "@csubj/pi-herdr",
-  "version": "0.5.3",
+  "name": "@hcflabs/pi-herdr",
+  "version": "0.5.4",
   "description": "Shared client for interacting with Herdr from Node.js tools and Pi packages.",
   "keywords": [
     "pi-package",
@@ -40,11 +40,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/csubj/pi-harness.git",
+    "url": "git+https://github.com/hcflabs/pi-harness.git",
     "directory": "packages/pi-herdr"
   },
   "bugs": {
-    "url": "https://github.com/csubj/pi-harness/issues"
+    "url": "https://github.com/hcflabs/pi-harness/issues"
   },
   "publishConfig": {
     "access": "public"

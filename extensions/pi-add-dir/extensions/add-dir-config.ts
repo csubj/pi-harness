@@ -1,4 +1,4 @@
-import { createConfigStore, field, parsers } from "@csubj/pi-config-store";
+import { createConfigStore, field, parsers } from "@hcflabs/pi-config-store";
 
 export function createAddDirConfigStore(agentDir?: string) {
 	return createConfigStore({

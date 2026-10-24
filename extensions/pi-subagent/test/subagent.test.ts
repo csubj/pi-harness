@@ -10,7 +10,7 @@ import { dirname, join } from "node:path";
 import test from "node:test";
 import { Compile } from "typebox/compile";
 import { createReadTool, DEFAULT_MAX_BYTES, type ExtensionAPI, type ExtensionContext, type ReadToolDetails } from "@earendil-works/pi-coding-agent";
-import { PI_SUBAGENT_PROCESS_LEASE, ROLE_TOOL_POLICY_FLAG } from "@csubj/pi-subagent";
+import { PI_SUBAGENT_PROCESS_LEASE, ROLE_TOOL_POLICY_FLAG } from "@hcflabs/pi-subagent";
 import { registerCheckoutAdmission } from "../extensions/admission.ts";
 import roleTools from "../extensions/role-tools.ts";
 import subagentExtension from "../extensions/subagent.ts";
@@ -1008,7 +1008,7 @@ test("uncertain direct allocation retains admission and recovery intent without 
 test("direct resource resolution still rejects recursive delegation packages before opening a tab", async () => {
 	await environment(async (agentDir) => {
 		await writeWorkerRole(agentDir);
-		await writeFile(join(agentDir, "config", "pi-subagent", "worker.md"), `---\nname: worker\ndescription: Invalid\ntools: [bash]\nextensions: ["npm:@csubj/pi-subagent"]\nskills: []\n---\nWork.\n`);
+		await writeFile(join(agentDir, "config", "pi-subagent", "worker.md"), `---\nname: worker\ndescription: Invalid\ntools: [bash]\nextensions: ["npm:@hcflabs/pi-subagent"]\nskills: []\n---\nWork.\n`);
 		await herdrEnvironment(async (cwd) => {
 			const fake = fakeHerdr(cwd);
 			const app = harness({ cwd, herdr: fake.exec });

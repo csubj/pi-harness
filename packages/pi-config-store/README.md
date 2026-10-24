@@ -1,11 +1,11 @@
-# `@csubj/pi-config-store`
+# `@hcflabs/pi-config-store`
 
 Give extension authors one safe home for Pi extension files. A bad user config never crashes an extension. The store reports each problem. It uses safe defaults, or it returns a disabled config when a default is not safe. End users do not install this package directly in Pi.
 
 ## Install
 
 ```bash
-npm install @csubj/pi-config-store
+npm install @hcflabs/pi-config-store
 ```
 
 Use your extension package's package manager. Do not run `pi install` for this library.
@@ -16,7 +16,7 @@ Declare each top-level key in a field table. Give each optional field a default.
 
 ```ts
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { createConfigStore, field, parsers, registerConfigReporting, required } from "@csubj/pi-config-store";
+import { createConfigStore, field, parsers, registerConfigReporting, required } from "@hcflabs/pi-config-store";
 
 export default function (pi: ExtensionAPI) {
   const store = createConfigStore({

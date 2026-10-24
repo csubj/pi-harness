@@ -1,4 +1,4 @@
-import { createConfigStore, field, type FieldParser, parsers } from "@csubj/pi-config-store";
+import { createConfigStore, field, type FieldParser, parsers } from "@hcflabs/pi-config-store";
 import { parseColor, type Color } from "@earendil-works/pi-tui";
 import type { Theme, ThemeColor } from "@earendil-works/pi-coding-agent";
 

@@ -8,7 +8,7 @@ interface Props {
 const {
   class: className = "",
   id = "hero",
-  installCommand = "curl -fsSL https://raw.githubusercontent.com/csubj/pi-harness/main/website/public/install.sh | sh",
+  installCommand = "curl -fsSL https://raw.githubusercontent.com/hcflabs/pi-harness/main/website/public/install.sh | sh",
 } = Astro.props;
 const statusId = `${id}-copy-status`;
 const benchmarkId = `${id}-benchmark-heading`;
@@ -68,7 +68,7 @@ const mobileCodexTickX = (index: number) =>
     </div>
 
     <div class="hero-proof-grid">
-      <article class="hero-installer" aria-label="csubj Pi Harness installer">
+      <article class="hero-installer" aria-label="hcflabs Pi Harness installer">
         <div class="hero-command-row">
           <code class="hero-command"
             ><span class="hero-shell-prompt" aria-hidden="true">$ </span>{
@@ -106,7 +106,7 @@ const mobileCodexTickX = (index: number) =>
         <p class="hero-copy-status">
           <span class="hero-spinner" aria-hidden="true">⠋</span>
           <span id={statusId} data-copy-status aria-live="polite"
-            >One script to install Pi, Herdr, csubj Pi Harness…</span
+            >One script to install Pi, Herdr, hcflabs Pi Harness…</span
           >
         </p>
       </article>

@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { mkdir, stat } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { getAgentDir, type ExtensionAPI, type ExtensionCommandContext, type ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { readTextFileBounded, registerConfigReporting } from "@csubj/pi-config-store";
+import { readTextFileBounded, registerConfigReporting } from "@hcflabs/pi-config-store";
 import {
 	createEphemeralSubagentExecutor,
 	finalizeRoleLaunch,
@@ -13,8 +13,8 @@ import {
 	type EphemeralSubagentExecutor,
 	type ResolvedRoleLaunch,
 	type Role,
-} from "@csubj/pi-subagent";
-import { modelReference, registerModelTask, registerTaskModelsConfigReporting, resolveTaskModelRoute, type ModelTask } from "@csubj/pi-task-models";
+} from "@hcflabs/pi-subagent";
+import { modelReference, registerModelTask, registerTaskModelsConfigReporting, resolveTaskModelRoute, type ModelTask } from "@hcflabs/pi-task-models";
 import {
 	cronConfigStore,
 	cronHome,

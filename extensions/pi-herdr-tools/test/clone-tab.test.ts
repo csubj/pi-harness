@@ -3,7 +3,7 @@ import { mkdir, readFile, readdir, rm, stat } from "node:fs/promises";
 import { basename, join } from "node:path";
 import test from "node:test";
 import { SessionManager, type ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
-import { withWorktreeLock } from "@csubj/pi-herdr";
+import { withWorktreeLock } from "@hcflabs/pi-herdr";
 import {
 	fixture,
 	success,

@@ -1,6 +1,6 @@
 import { lstat, readdir, realpath } from "node:fs/promises";
 import { dirname, isAbsolute, join, normalize, relative, sep } from "node:path";
-import { spawnBounded, type Exec } from "@csubj/pi-process";
+import { spawnBounded, type Exec } from "@hcflabs/pi-process";
 
 const DEFAULT_GIT_TIMEOUT_MS = 10_000;
 const DEFAULT_MAX_DEPTH = 3;
@@ -15,7 +15,7 @@ const EXCLUDED_PREFIXES = [".scratch-"];
 
 /** Options for each Git call. */
 export interface RepoOptions {
-	/** Runs Git. The default is `spawnBounded` from `@csubj/pi-process`. */
+	/** Runs Git. The default is `spawnBounded` from `@hcflabs/pi-process`. */
 	runProcess?: Exec;
 	/** Stops the operation. */
 	signal?: AbortSignal;

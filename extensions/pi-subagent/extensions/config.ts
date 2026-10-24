@@ -1,6 +1,6 @@
-import { formatConfigIssues, type ConfigLoad } from "@csubj/pi-config-store";
+import { formatConfigIssues, type ConfigLoad } from "@hcflabs/pi-config-store";
 import type { ExecutionPolicySnapshot } from "../dist/schema.js";
-import type { SubagentConfig } from "@csubj/pi-subagent";
+import type { SubagentConfig } from "@hcflabs/pi-subagent";
 
 /** Resolve one immutable policy. A disabled config blocks delegation. */
 export function resolveExecutionPolicy(path: string, loaded: ConfigLoad<SubagentConfig>): ExecutionPolicySnapshot {

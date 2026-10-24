@@ -104,11 +104,11 @@ test("installer package discovery ignores directories without manifests", () => 
     mkdirSync(join(root, "extensions", "stale-package", "dist"), { recursive: true });
     mkdirSync(join(root, "extensions", "example"));
     writeFileSync(join(root, "extensions", "example", "package.json"), JSON.stringify({
-      name: "@csubj/example",
+      name: "@hcflabs/example",
       pi: {},
     }));
 
-    assert.deepEqual(collectInstallablePackages(root), ["@csubj/example"]);
+    assert.deepEqual(collectInstallablePackages(root), ["@hcflabs/example"]);
   } finally {
     rmSync(root, { force: true, recursive: true });
   }
@@ -120,9 +120,9 @@ test("installer stays synchronized with every public Pi package", () => {
 
   assert.deepEqual(packageNamesFromInstaller(source), names);
   assert.equal(renderInstaller(source, names), source);
-  assert.ok(!names.includes("@csubj/pi-config-store"));
-  assert.ok(!names.includes("@csubj/pi-herdr"));
-  assert.ok(names.includes("@csubj/pi-subagent"));
+  assert.ok(!names.includes("@hcflabs/pi-config-store"));
+  assert.ok(!names.includes("@hcflabs/pi-herdr"));
+  assert.ok(names.includes("@hcflabs/pi-subagent"));
 });
 
 test("all mode requires Herdr 0.9.0, installs every extension", () => {
@@ -144,10 +144,10 @@ test("pi-herdr-tools alone retains the Herdr 0.7.4 floor", () => {
     assert.deepEqual(commands(), [
       "pi --version",
       "herdr --version",
-      "pi install npm:@csubj/pi-herdr-tools",
+      "pi install npm:@hcflabs/pi-herdr-tools",
     ]);
   }, {
-    extensions: ["@csubj/pi-herdr-tools"],
+    extensions: ["@hcflabs/pi-herdr-tools"],
     herdrLatest: "0.7.4",
   });
 });
@@ -159,7 +159,7 @@ test("pi-subagent alone rejects Herdr below 0.9.0", () => {
     assert.equal(result.status, 1);
     assert.match(result.stderr, /Herdr 0\.8\.9.*Herdr 0\.9\.0\+ is required/);
     assert.deepEqual(commands(), ["pi --version", "herdr --version"]);
-  }, { extensions: ["@csubj/pi-subagent"] });
+  }, { extensions: ["@hcflabs/pi-subagent"] });
 });
 
 test("update flag approves available Pi and Herdr updates", () => {

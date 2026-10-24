@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { createConfigStore, extensionConfigDir, field, parsers } from "@csubj/pi-config-store";
+import { createConfigStore, extensionConfigDir, field, parsers } from "@hcflabs/pi-config-store";
 
 const EXTENSION_ID = "pi-memory";
 

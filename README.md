@@ -1,14 +1,14 @@
-# csubj Pi Harness
+# hcflabs Pi Harness
 
-[![MIT license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/csubj/pi-harness/blob/main/LICENSE)
-[![npm profile](https://img.shields.io/badge/npm-%40csubj-CB3837.svg?logo=npm)](https://www.npmjs.com/~csubj)
+[![MIT license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/hcflabs/pi-harness/blob/main/LICENSE)
+[![npm profile](https://img.shields.io/badge/npm-%40hcflabs-CB3837.svg?logo=npm)](https://www.npmjs.com/~hcflabs)
 
-Pi extensions for subagents, memory, Herdr panes, and other agent workflows. These extensions use strong workflow preferences, so read each package guide before you install it. The guides are the README files in [`extensions/`](https://github.com/csubj/pi-harness/tree/main/extensions) and [`packages/`](https://github.com/csubj/pi-harness/tree/main/packages).
+Pi extensions for subagents, memory, Herdr panes, and other agent workflows. These extensions use strong workflow preferences, so read each package guide before you install it. The guides are the README files in [`extensions/`](https://github.com/hcflabs/pi-harness/tree/main/extensions) and [`packages/`](https://github.com/hcflabs/pi-harness/tree/main/packages).
 
 ## Install
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/csubj/pi-harness/main/website/public/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/hcflabs/pi-harness/main/website/public/install.sh | sh
 ```
 
 The installer does these steps:
@@ -26,10 +26,10 @@ Without an interactive terminal, the installer installs all extensions and does 
 | `--update` | Approve available Pi and Herdr updates without a prompt. |
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/csubj/pi-harness/main/website/public/install.sh | sh -s -- --update
+curl -fsSL https://raw.githubusercontent.com/hcflabs/pi-harness/main/website/public/install.sh | sh -s -- --update
 ```
 
-To install one extension, use Pi directly, for example `pi install npm:@csubj/pi-undo`.
+To install one extension, use Pi directly, for example `pi install npm:@hcflabs/pi-undo`.
 
 ## Extension dependencies
 
@@ -60,4 +60,4 @@ CI runs these checks on each pull request:
 | `pnpm run docs:validate` | The installer list, README structure, Simplified Technical English rules, and the website. |
 | `pnpm run check:package-versions` | Version bumps for changed published files. |
 
-To release a package, follow [the release runbook](https://github.com/csubj/pi-harness/blob/main/docs/releasing.md).
+To release a package, follow [the release runbook](https://github.com/hcflabs/pi-harness/blob/main/docs/releasing.md).

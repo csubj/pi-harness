@@ -1,5 +1,5 @@
 import { lstat } from "node:fs/promises";
-import type { HerdrExecResult } from "@csubj/pi-herdr";
+import type { HerdrExecResult } from "@hcflabs/pi-herdr";
 
 export const PI_SUBAGENT_PROCESS_LEASE = "PI_SUBAGENT_PROCESS_LEASE";
 

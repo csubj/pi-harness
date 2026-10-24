@@ -17,7 +17,7 @@ importers:
 
   extensions/pi-add-dir:
     dependencies:
-      '@csubj/pi-config-store':
+      '@hcflabs/pi-config-store':
         specifier: ^4.0.0
         version: link:../../packages/pi-config-store
       typebox:
@@ -33,7 +33,7 @@ importers:
 
   extensions/pi-advisor:
     dependencies:
-      '@csubj/pi-task-models':
+      '@hcflabs/pi-task-models':
         specifier: ^9.0.0
         version: link:../pi-task-models
     devDependencies:
@@ -53,10 +53,10 @@ importers:
 
   extensions/pi-auto-compact:
     dependencies:
-      '@csubj/pi-config-store':
+      '@hcflabs/pi-config-store':
         specifier: ^4.0.0
         version: link:../../packages/pi-config-store
-      '@csubj/pi-task-models':
+      '@hcflabs/pi-task-models':
         specifier: ^9.0.0
         version: link:../pi-task-models
     devDependencies:
@@ -76,13 +76,13 @@ importers:
 
   extensions/pi-cron:
     dependencies:
-      '@csubj/pi-config-store':
+      '@hcflabs/pi-config-store':
         specifier: ^4.0.0
         version: link:../../packages/pi-config-store
-      '@csubj/pi-subagent':
+      '@hcflabs/pi-subagent':
         specifier: ^27.2.0
         version: link:../pi-subagent
-      '@csubj/pi-task-models':
+      '@hcflabs/pi-task-models':
         specifier: ^9.0.0
         version: link:../pi-task-models
       proper-lockfile:
@@ -104,7 +104,7 @@ importers:
 
   extensions/pi-footer:
     dependencies:
-      '@csubj/pi-config-store':
+      '@hcflabs/pi-config-store':
         specifier: ^4.0.0
         version: link:../../packages/pi-config-store
     devDependencies:
@@ -127,13 +127,13 @@ importers:
 
   extensions/pi-herdr-tools:
     dependencies:
-      '@csubj/pi-config-store':
+      '@hcflabs/pi-config-store':
         specifier: ^4.0.0
         version: link:../../packages/pi-config-store
-      '@csubj/pi-herdr':
+      '@hcflabs/pi-herdr':
         specifier: ^0.5.0
         version: link:../../packages/pi-herdr
-      '@csubj/pi-task-models':
+      '@hcflabs/pi-task-models':
         specifier: ^9.0.0
         version: link:../pi-task-models
       typebox:
@@ -152,13 +152,13 @@ importers:
 
   extensions/pi-memory:
     dependencies:
-      '@csubj/pi-ask-question':
+      '@hcflabs/pi-ask-question':
         specifier: ^3.0.0
         version: link:../pi-ask-question
-      '@csubj/pi-config-store':
+      '@hcflabs/pi-config-store':
         specifier: ^4.0.0
         version: link:../../packages/pi-config-store
-      '@csubj/pi-task-models':
+      '@hcflabs/pi-task-models':
         specifier: ^9.0.0
         version: link:../pi-task-models
       proper-lockfile:
@@ -183,7 +183,7 @@ importers:
 
   extensions/pi-multi-codex:
     dependencies:
-      '@csubj/pi-config-store':
+      '@hcflabs/pi-config-store':
         specifier: ^4.0.0
         version: link:../../packages/pi-config-store
       proper-lockfile:
@@ -202,7 +202,7 @@ importers:
 
   extensions/pi-notes:
     dependencies:
-      '@csubj/pi-config-store':
+      '@hcflabs/pi-config-store':
         specifier: ^4.0.0
         version: link:../../packages/pi-config-store
     devDependencies:
@@ -215,13 +215,13 @@ importers:
 
   extensions/pi-prompt-creator:
     dependencies:
-      '@csubj/pi-config-store':
+      '@hcflabs/pi-config-store':
         specifier: ^4.0.0
         version: link:../../packages/pi-config-store
-      '@csubj/pi-subagent':
+      '@hcflabs/pi-subagent':
         specifier: ^22.0.0 || ^23.0.0 || ^24.0.0 || ^25.0.0 || ^26.0.0 || ^27.0.0
         version: link:../pi-subagent
-      '@csubj/pi-task-models':
+      '@hcflabs/pi-task-models':
         specifier: ^9.0.0
         version: link:../pi-task-models
     devDependencies:
@@ -231,7 +231,7 @@ importers:
 
   extensions/pi-session-recall:
     dependencies:
-      '@csubj/pi-config-store':
+      '@hcflabs/pi-config-store':
         specifier: ^4.0.0
         version: link:../../packages/pi-config-store
       typebox:
@@ -250,19 +250,19 @@ importers:
 
   extensions/pi-subagent:
     dependencies:
-      '@csubj/pi-config-store':
+      '@hcflabs/pi-config-store':
         specifier: ^4.0.0
         version: link:../../packages/pi-config-store
-      '@csubj/pi-herdr':
+      '@hcflabs/pi-herdr':
         specifier: ^0.5.0
         version: link:../../packages/pi-herdr
-      '@csubj/pi-multi-codex':
+      '@hcflabs/pi-multi-codex':
         specifier: ^3.0.0
         version: link:../pi-multi-codex
-      '@csubj/pi-process':
+      '@hcflabs/pi-process':
         specifier: ^0.2.0
         version: link:../../packages/pi-process
-      '@csubj/pi-task-models':
+      '@hcflabs/pi-task-models':
         specifier: ^9.0.0
         version: link:../pi-task-models
       proper-lockfile:
@@ -287,7 +287,7 @@ importers:
 
   extensions/pi-task-models:
     dependencies:
-      '@csubj/pi-config-store':
+      '@hcflabs/pi-config-store':
         specifier: ^4.0.0
         version: link:../../packages/pi-config-store
     devDependencies:
@@ -340,7 +340,7 @@ importers:
 
   packages/pi-repo:
     dependencies:
-      '@csubj/pi-process':
+      '@hcflabs/pi-process':
         specifier: ^0.2.0
         version: link:../pi-process
 

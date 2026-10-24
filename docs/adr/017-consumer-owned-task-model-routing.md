@@ -5,7 +5,7 @@
 
 ## Context
 
-Task-model routing defaults were centralized in `DEFAULT_TASK_ASSIGNMENTS` inside `@csubj/pi-task-models`, so the shared routing package had to name every consumer task and release when a consumer changed its defaults. Moving model settings into each consumer config would instead duplicate routing policy, while bundling the shared control plane into consumers would create duplicate extensions. The architecture also needs a clear boundary between current-session-agent work and independently executed model operations.
+Task-model routing defaults were centralized in `DEFAULT_TASK_ASSIGNMENTS` inside `@hcflabs/pi-task-models`, so the shared routing package had to name every consumer task and release when a consumer changed its defaults. Moving model settings into each consumer config would instead duplicate routing policy, while bundling the shared control plane into consumers would create duplicate extensions. The architecture also needs a clear boundary between current-session-agent work and independently executed model operations.
 
 ## Decision
 
@@ -13,18 +13,18 @@ Task-model routing defaults were centralized in `DEFAULT_TASK_ASSIGNMENTS` insid
 
 **Ownership boundaries.**
 - **Consumer** (each importing package): declares its Model Tasks and default Task Profiles via namespaced Pi events at load time. Owns task identity and intent.
-- **@csubj/pi-task-models**: owns shared Task Profiles (`fast`, `balanced`, `frontier`, `fav`), explicit user Task overrides, route resolution, and configuration UI. Does not own consumer defaults.
+- **@hcflabs/pi-task-models**: owns shared Task Profiles (`fast`, `balanced`, `frontier`, `fav`), explicit user Task overrides, route resolution, and configuration UI. Does not own consumer defaults.
 - **Pi model registry**: owns available models, authentication, and capabilities. Task Routes resolve model references against the registry; they do not copy model metadata.
 
 **Configuration persistence.** Shared config persists **explicit user overrides only**. Startup never writes consumer defaults. Consumer declarations are the source of truth for defaults; user overrides layer on top.
 
 **Discovery and registration.** Replace centralized `DEFAULT_TASK_ASSIGNMENTS` with consumer declarations. Resolvers accept the consumer declaration directly. The control-plane extension discovers active declarations through an idempotent, namespaced Pi event request/response handshake, so either extension load order works. No central consumer-task map remains.
 
-**SDK consumption.** Consumers import `@csubj/pi-task-models` as a normal runtime dependency. They do **not** bundle or activate duplicate task-model control-plane extensions. The control plane is installed once as a top-level Pi package.
+**SDK consumption.** Consumers import `@hcflabs/pi-task-models` as a normal runtime dependency. They do **not** bundle or activate duplicate task-model control-plane extensions. The control plane is installed once as a top-level Pi package.
 
-**No core package split.** Absent evidence, `@csubj/pi-task-models` remains a single package.
+**No core package split.** Absent evidence, `@hcflabs/pi-task-models` remains a single package.
 
-**pi-memory specifics.** `pi-memory` declares three independently invoked Model Tasks, each with default **balanced** Profile: `pi-memory/reviewCandidate` (candidate review), `pi-memory/prepareCandidate` (`/remember` candidate preparation), and `pi-memory/promoteEntries` (`/dream` promotion proposal). It imports `@csubj/pi-task-models` as a normal runtime dependency. The final memory check stays current-agent work.
+**pi-memory specifics.** `pi-memory` declares three independently invoked Model Tasks, each with default **balanced** Profile: `pi-memory/reviewCandidate` (candidate review), `pi-memory/prepareCandidate` (`/remember` candidate preparation), and `pi-memory/promoteEntries` (`/dream` promotion proposal). It imports `@hcflabs/pi-task-models` as a normal runtime dependency. The final memory check stays current-agent work.
 
 ## Consequences
 

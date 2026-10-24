@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { realpathSync } from "node:fs";
 import { lstat, mkdir, open, readdir, realpath } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, resolve } from "node:path";
-import { extensionConfigDir, readTextFileBounded, writePrivateTextFileAtomically } from "@csubj/pi-config-store";
+import { extensionConfigDir, readTextFileBounded, writePrivateTextFileAtomically } from "@hcflabs/pi-config-store";
 import { check, lock } from "proper-lockfile";
 import { parseRunState, RUN_STATE_VERSION, type RunState } from "./schema.ts";
 import { discardResources } from "./discard.ts";

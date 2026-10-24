@@ -1,4 +1,4 @@
-import { spawnBounded } from "@csubj/pi-process";
+import { spawnBounded } from "@hcflabs/pi-process";
 
 const OUTPUT_LIMIT_BYTES = 1024 * 1024;
 

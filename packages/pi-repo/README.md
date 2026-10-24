@@ -1,17 +1,17 @@
-# `@csubj/pi-repo`
+# `@hcflabs/pi-repo`
 
 Select a Git repository below a parent directory that is not a Git repository. Validate a `repo` selector, and find the child repositories of a directory.
 
 ## Install
 
 ```bash
-npm install @csubj/pi-repo
+npm install @hcflabs/pi-repo
 ```
 
 ## Use
 
 ```ts
-import { discoverRepos, resolveRepoTarget } from "@csubj/pi-repo";
+import { discoverRepos, resolveRepoTarget } from "@hcflabs/pi-repo";
 
 const found = await discoverRepos("/home/me/code/group");
 // found.repos: [{ repo: "ci/components", root: "/home/me/code/group/ci/components", linkedWorktree: false }, ...]

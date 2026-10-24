@@ -2,7 +2,7 @@ import type { ExtensionAPI, ExtensionContext, SessionEntry } from "@earendil-wor
 import {
 	executeTaskRoutes, registerModelTask, registerTaskModelsConfigReporting, resolveConfiguredTaskRoutes,
 	type ModelTask, type ResolvedTaskRoute,
-} from "@csubj/pi-task-models";
+} from "@hcflabs/pi-task-models";
 
 export const ADVISOR_ENTRY = "pi-advisor";
 export const BLOCKER_MESSAGE = "pi-advisor-blocker";

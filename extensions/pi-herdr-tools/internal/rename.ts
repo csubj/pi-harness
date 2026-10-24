@@ -3,8 +3,8 @@ import {
 	type ExtensionAPI,
 	type ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
-import { createHerdrClient, withWorktreeLock } from "@csubj/pi-herdr";
-import { executeTaskRoutes, registerModelTask, registerTaskModelsConfigReporting, type ModelTask, type ResolvedTaskRoute } from "@csubj/pi-task-models";
+import { createHerdrClient, withWorktreeLock } from "@hcflabs/pi-herdr";
+import { executeTaskRoutes, registerModelTask, registerTaskModelsConfigReporting, type ModelTask, type ResolvedTaskRoute } from "@hcflabs/pi-task-models";
 import { configuredTaskRoutes } from "./task-models.ts";
 
 const WIDGET_KEY = "pi-herdr-rename";

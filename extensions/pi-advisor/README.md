@@ -1,11 +1,11 @@
-# `@csubj/pi-advisor`
+# `@hcflabs/pi-advisor`
 
 Let a second model examine the tool calls and results of each agent run after Pi settles the run. The advisor returns graded notes. A blocker sends one follow-up message that makes the agent fix it.
 
 ## Install
 
 ```bash
-pi install npm:@csubj/pi-advisor
+pi install npm:@hcflabs/pi-advisor
 ```
 
 The advisor uses the `pi-advisor/review` Model Task. Its default Task Profile is `balanced`. Run `/task-models` to configure a route for that profile before you turn the advisor on.
@@ -14,8 +14,8 @@ The advisor uses the `pi-advisor/review` Model Task. Its default Task Profile is
 
 | Package | Relationship | Purpose |
 | --- | --- | --- |
-| [`@csubj/pi-goal`](https://github.com/csubj/pi-harness/tree/main/extensions/pi-goal) | Improves | Goal continuations stay in one run. The advisor examines all of that work after the run settles. |
-| [`@csubj/pi-task-models`](https://github.com/csubj/pi-harness/tree/main/extensions/pi-task-models) | Required | Provides the advisor model route. |
+| [`@hcflabs/pi-goal`](https://github.com/hcflabs/pi-harness/tree/main/extensions/pi-goal) | Improves | Goal continuations stay in one run. The advisor examines all of that work after the run settles. |
+| [`@hcflabs/pi-task-models`](https://github.com/hcflabs/pi-harness/tree/main/extensions/pi-task-models) | Required | Provides the advisor model route. |
 
 ## Use
 

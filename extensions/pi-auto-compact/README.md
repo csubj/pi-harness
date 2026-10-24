@@ -1,12 +1,12 @@
-# `@csubj/pi-auto-compact`
+# `@hcflabs/pi-auto-compact`
 
 Keep free context space with read trim before summary compaction. Normal compaction preserves completed tool turns and does not restart a final answer.
 
 ## Install
 
 ```bash
-pi install npm:@csubj/pi-task-models
-pi install npm:@csubj/pi-auto-compact
+pi install npm:@hcflabs/pi-task-models
+pi install npm:@hcflabs/pi-auto-compact
 ```
 
 Configure `fast` in `/task-models`. The compaction task uses `fast` unless a task entry overrides it.
@@ -27,7 +27,7 @@ Restart Pi after installation or settings changes. Activation requires effective
 
 | Package | Relationship | Purpose |
 | --- | --- | --- |
-| [`@csubj/pi-task-models`](https://github.com/csubj/pi-harness/tree/main/extensions/pi-task-models) | Required | Provides shared compaction routes. |
+| [`@hcflabs/pi-task-models`](https://github.com/hcflabs/pi-harness/tree/main/extensions/pi-task-models) | Required | Provides shared compaction routes. |
 
 ## Use
 
