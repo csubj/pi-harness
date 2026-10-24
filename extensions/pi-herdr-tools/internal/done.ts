@@ -88,9 +88,10 @@ export default function herdrDoneExtension(pi: ExtensionAPI): void {
 					throw new Error(`Worktree still used by Herdr tabs ${names.join(", ")}; close them first.`);
 				}
 
+				// Run Git in the primary checkout of the same repository. Pi's cwd can be outside it.
 				await execOrThrow("git", [
 					"worktree", "remove", ...(force ? ["--force"] : []), checkout,
-				], ctx.cwd);
+				], mainCheckout);
 				return siblingTabIds;
 			});
 			try {

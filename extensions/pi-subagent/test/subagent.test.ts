@@ -2091,3 +2091,31 @@ test("direct repo opens the worker tab in the child repository and labels its re
 		});
 	});
 });
+
+test("a direct writer launches only in the checkout that admission reserved", async () => {
+	await environment(async (agentDir) => {
+		await writeWorkerRole(agentDir);
+		await herdrEnvironment(async () => {
+			const parent = await realpath(await mkdtemp(join(tmpdir(), "pi-subagent-swap-")));
+			try {
+				for (const name of ["a", "b"]) {
+					await mkdir(join(parent, name), { recursive: true });
+					execFileSync("git", ["init", "-q", join(parent, name)]);
+				}
+				await symlink(join(parent, "a"), join(parent, "link"));
+				const fake = fakeHerdr(parent);
+				const app = harness({ cwd: parent, herdr: fake.exec });
+				app.handlers.get("session_start")?.({}, app.ctx);
+				const params = { role: "worker", name: "Edit", task: "edit", access: "write" as const, repo: "link" };
+				assert.equal(await app.handlers.get("tool_call")!({ toolCallId: "call", toolName: "delegate_task", input: { mode: "direct", ...params } }, app.ctx), undefined);
+				// The selector now points at another repository than the one admission reserved.
+				await rm(join(parent, "link"));
+				await symlink(join(parent, "b"), join(parent, "link"));
+				await assert.rejects(app.tool.execute("call", params, undefined, undefined, app.ctx), /resolves to .*\/b, which admission did not reserve \(.*\/a\)/);
+				assert.equal(fake.calls.some((args) => args[0] === "tab"), false);
+			} finally {
+				await rm(parent, { recursive: true, force: true });
+			}
+		});
+	});
+});

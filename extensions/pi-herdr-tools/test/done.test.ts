@@ -139,7 +139,7 @@ test("/done resolves the checkout root, skips own tab, removes the checkout, the
 			{ command: "git", args: ["worktree", "list", "--porcelain", "-z"], options: { cwd: checkout } },
 			{ command: "herdr", args: ["api", "snapshot"], options: { cwd: "/repo/worktree/nested" } },
 			{ command: "herdr", args: ["tab", "list"], options: { cwd: "/repo/worktree/nested" } },
-			{ command: "git", args: ["worktree", "remove", checkout], options: { cwd: "/repo/worktree/nested" } },
+			{ command: "git", args: ["worktree", "remove", checkout], options: { cwd: mainCheckoutDir } },
 			{ command: "git", args: ["pull", "--ff-only"], options: { cwd: mainCheckoutDir } },
 			{ command: "herdr", args: ["tab", "close", "w1:t1"], options: { cwd: tmpdir() } },
 		]);

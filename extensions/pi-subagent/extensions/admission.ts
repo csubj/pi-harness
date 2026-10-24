@@ -33,7 +33,12 @@ const overlaps = (left: string, right: string) => isWithin(left, right) || isWit
  * A direct writer reserves the checkout of each task target at one time.
  * External processes and trusted extension lifecycle code are not intercepted.
  */
-export function registerCheckoutAdmission(pi: ExtensionAPI, classifyDirect: (input: unknown) => DirectAdmission): (toolCallId: string) => () => void {
+export type CheckoutAdmission = ((toolCallId: string) => () => void) & {
+	/** The real checkout paths that admission reserved for a direct writer call. */
+	admitted(toolCallId: string): readonly string[] | undefined;
+};
+
+export function registerCheckoutAdmission(pi: ExtensionAPI, classifyDirect: (input: unknown) => DirectAdmission): CheckoutAdmission {
 	const heldCalls = new Set<string>();
 	const calls = new Map<string, { direct: boolean; keys?: readonly string[] }>();
 	// One Git lookup per working directory per session; a failed lookup is retried.
@@ -99,7 +104,7 @@ export function registerCheckoutAdmission(pi: ExtensionAPI, classifyDirect: (inp
 		for (const toolCallId of calls.keys()) release(toolCallId);
 	});
 	// The tool returns a handle before its worker stops. Release only after verified termination.
-	return (toolCallId) => {
+	const hold = (toolCallId: string) => {
 		const call = calls.get(toolCallId);
 		if (!call?.direct || !call.keys) {
 			throw new Error(`Direct call ${toolCallId} was not admitted as a checkout writer; delegate again.`);
@@ -107,4 +112,10 @@ export function registerCheckoutAdmission(pi: ExtensionAPI, classifyDirect: (inp
 		heldCalls.add(toolCallId);
 		return () => { heldCalls.delete(toolCallId); release(toolCallId); };
 	};
+	return Object.assign(hold, {
+		admitted: (toolCallId: string) => {
+			const call = calls.get(toolCallId);
+			return call?.direct ? call.keys : undefined;
+		},
+	});
 }

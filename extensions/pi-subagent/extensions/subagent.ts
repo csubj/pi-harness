@@ -804,6 +804,16 @@ export default function subagentExtension(pi: ExtensionAPI): void {
 			const settled = new Promise<void>((resolve) => { resolveSettled = resolve; });
 			// Register before Herdr can create a tab: session switches must await this
 			// launch, including its identity callback, before copying recovery records.
+			if (writes) {
+				// A selector can point somewhere else after admission resolved it, for example through a symlink.
+				// Launch only in the exact checkouts that admission reserved.
+				const admitted = holdAdmission.admitted(toolCallId) ?? [];
+				for (const [index, { repo }] of workflow.delegations.entries()) {
+					if (repo !== undefined && !admitted.includes(targets[index]!)) {
+						throw boundedError(new Error(`Task ${index + 1} repo ${repo} resolves to ${targets[index]}, which admission did not reserve (${admitted.join(", ") || "none"}). The target changed after admission; delegate again.`));
+					}
+				}
+			}
 			const releaseAdmission = writes ? holdAdmission(toolCallId) : () => {};
 			const local: NonNullable<ReturnType<typeof directTasks.get>> = { controller, settled, handles, tabs,
 				continues: new Set([...sources.values()].map(({ sessionFile }) => sessionFile)) };
