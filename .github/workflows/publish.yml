@@ -33,19 +33,13 @@ jobs:
       - name: Publish new package versions
         run: |
           set -euo pipefail
-          shopt -s nullglob
           published=0
-          declare -A seen=()
 
-          # Prerequisites must exist before their consumers release.
-          for manifest in packages/pi-config-store/package.json packages/pi-herdr/package.json extensions/pi-multi-codex/package.json extensions/pi-task-models/package.json extensions/pi-subagent/package.json extensions/*/package.json packages/*/package.json; do
-            [ "${seen[$manifest]:-0}" = 1 ] && continue
-            seen[$manifest]=1
-            metadata="$(node -p "((p) => [p.name, p.version, Boolean(p.private)].join(' '))(require('./$manifest'))")"
-            read -r name local_version private <<< "$metadata"
-            if [ "$private" = true ]; then
-              continue
-            fi
+          # Dependency order: each package publishes after the workspace packages that it needs.
+          manifests="$(node scripts/publish-order.mjs)"
+          while read -r manifest; do
+            metadata="$(node -p "((p) => [p.name, p.version].join(' '))(require('./$manifest'))")"
+            read -r name local_version <<< "$metadata"
 
             decision="$(node scripts/publish-decision.mjs "$name" "$local_version")"
             if [ "$decision" = skip ]; then
@@ -53,9 +47,17 @@ jobs:
             fi
 
             echo "Publishing $name@$local_version"
-            (cd "${manifest%/package.json}" && npm publish)
-            published=1
-          done
+            log="$(mktemp)"
+            if (cd "${manifest%/package.json}" && npm publish) 2>&1 | tee "$log"; then
+              published=1
+            elif grep -q 'Cannot publish over previously staged version' "$log"; then
+              # npm validates a new version for some minutes, and npm view does not show it yet.
+              # An earlier run already published this version, so this run continues.
+              echo "::warning::$name@$local_version is still in npm validation from an earlier run; skipped."
+            else
+              exit 1
+            fi
+          done <<< "$manifests"
 
           if [ "$published" = 0 ]; then
             echo 'No new package versions.'
