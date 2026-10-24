@@ -37,7 +37,7 @@
   "scripts": {
     "build": "pnpm --filter @hcflabs/pi-config-store --filter @hcflabs/pi-herdr --filter @hcflabs/pi-process --filter @hcflabs/pi-repo --filter @hcflabs/pi-task-models --filter @hcflabs/pi-subagent --filter @hcflabs/pi-ask-question run build",
     "postinstall": "pnpm run build",
-    "test": "node --test scripts/check-package-versions.test.mjs scripts/rebump-versions.test.mjs scripts/publish-decision.test.mjs && node --test 'evals/**/*.test.ts' && node scripts/test-workspaces.mjs",
+    "test": "node --test scripts/check-package-versions.test.mjs scripts/rebump-versions.test.mjs scripts/publish-decision.test.mjs scripts/publish-order.test.mjs && node --test 'evals/**/*.test.ts' && node scripts/test-workspaces.mjs",
     "eval": "node evals/run.ts",
     "test:live": "pnpm --filter @hcflabs/pi-auto-compact run test:live",
     "check:package-versions": "node scripts/check-package-versions.mjs",

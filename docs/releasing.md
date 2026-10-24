@@ -50,7 +50,9 @@ The floor is the oldest Pi version the package supports, normally the major's `.
 
 ## Publish
 
-Push `main`. After CI succeeds, `.github/workflows/publish.yml` compares each public workspace version with npm and publishes only newer versions. Private workspaces are skipped.
+Push `main`. After CI succeeds, `.github/workflows/publish.yml` compares each public workspace version with npm and publishes only newer versions. Private workspaces are skipped. `scripts/publish-order.mjs` sets the order: each package publishes after the workspace packages in its `dependencies` and `peerDependencies`.
+
+npm validates a new version for some minutes before `npm view` shows it. If a second run starts in that time, npm rejects the same version with `Cannot publish over previously staged version`. The workflow then writes a warning and continues, because the earlier run already published that version. Any other publish error stops the run. To publish the packages after the stop, rerun the failed run when the earlier versions are visible.
 
 ## First publication checklist
 
@@ -84,6 +86,8 @@ npm view "$PACKAGE@$VERSION" version
 ```
 
 Authenticate, publish, and change trust settings only after an explicit request. Complete login and 2FA in the browser; never paste credentials or one-time passwords into chat. Publication is public, not a dry run. If its response is lost, verify the exact version on npm before deciding whether to retry.
+
+npm requires 2FA for `npm trust list`, also for a read. `sync.sh` captures npm output, so npm cannot wait for browser authentication and fails with `EOTP`. Before step 3, run one trust command directly, for example `npx --yes npm@^11.15.0 trust list <package>`. In the browser, approve it and select the option that skips 2FA for some minutes. Then run `sync.sh` in that time.
 
 Step 3 uses the [`npm-ops` trusted publishing sync](../.agents/skills/npm-ops/SKILL.md#trusted-publishing). It creates missing trust configuration and can change other packages' mismatched settings. Inspect the check results before applying changes. Report bootstrap complete only after verifying the exact version, publisher repository `hcflabs/pi-harness`, workflow `publish.yml`, and permission to publish. No registry deprecations are included in this checklist.
 
