@@ -31,3 +31,5 @@ On POSIX systems, cancellation and timeout terminate the child process group. In
 | `Exec` | type | Describe the executor call signature. |
 | `ExecOptions` | type | Configure cwd, cancellation, timeout, limits, and string stdin. |
 | `ExecResult` | type | Return stdout, stderr, exit code, kill state, and tail truncation. |
+| `scanProcessLease` | function | Run `lsof` on a private lease file and return the PIDs that hold it open. An empty result is evidence that the leased processes stopped. |
+| `assertPrivateLease` | function | Require a current-user, regular, non-symlink, mode-0600 lease file. |

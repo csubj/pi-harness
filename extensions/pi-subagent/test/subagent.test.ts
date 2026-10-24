@@ -34,11 +34,15 @@ async function admissionHarness(t: { after: (callback: () => Promise<void>) => v
 	const checkout = await realpath(await mkdtemp(join(tmpdir(), "pi-subagent-admission-")));
 	t.after(() => rm(checkout, { recursive: true, force: true }));
 	const handlers = new Map<string, (...args: any[]) => any>();
+	const busHandlers = new Map<string, Array<(data: unknown) => void>>();
 	const app = {
 		lookup: async () => {},
 		execs: 0,
+		checkout,
+		emit: (channel: string, data: unknown) => { for (const handler of busHandlers.get(channel) ?? []) handler(data); },
 		hold: registerCheckoutAdmission({
 			on(event: string, handler: (...args: any[]) => any) { handlers.set(event, handler); },
+			events: { on(channel: string, handler: (data: unknown) => void) { busHandlers.set(channel, [...busHandlers.get(channel) ?? [], handler]); return () => {}; }, emit() {} },
 			exec: async () => {
 				app.execs++;
 				await app.lookup();
@@ -2106,6 +2110,7 @@ test("admission from a non-Git parent reserves each child checkout and treats Ma
 	const handlers = new Map<string, (...args: any[]) => any>();
 	const hold = registerCheckoutAdmission({
 		on(event: string, handler: (...args: any[]) => any) { handlers.set(event, handler); },
+		events: { on() { return () => {}; }, emit() {} },
 		exec: async (_command: string, _args: string[], options: { cwd: string }) => {
 			const root = Object.values(children).find((child) => options.cwd === child || options.cwd.startsWith(`${child}/`));
 			return root ? { stdout: `${root}\n`, stderr: "", code: 0, killed: false } : { stdout: "", stderr: "fatal: not a git repository", code: 128, killed: false };
@@ -2195,4 +2200,21 @@ test("a direct writer launches only in the checkout that admission reserved", as
 			}
 		});
 	});
+});
+
+test("herdr_command write jobs hold Main activity until their end event; read jobs and other actions do not", async (t) => {
+	const app = await admissionHarness(t);
+	for (const input of [{ action: "start", access: "read" }, { action: "read", id: "cmd-0000000000000000" }, { action: "stop", id: "cmd-0000000000000000" }]) {
+		assert.equal(await app.call(`command-${input.action}`, "herdr_command", input), undefined);
+	}
+	assert.equal(await app.call("direct-1"), undefined, "read jobs and other actions hold no Main activity");
+	app.hold("direct-1")();
+	assert.equal(await app.call("start-write", "herdr_command", { action: "start", access: "write" }), undefined);
+	app.end("start-write");
+	app.emit("pi:checkout-activity:start", { jobId: "cmd-1", cwd: join(app.checkout, "sub") });
+	assertAdmissionBlocked(await app.call("direct-2"), "activity:cmd-1");
+	app.end("activity:cmd-1");
+	assertAdmissionBlocked(await app.call("direct-3"), "activity:cmd-1");
+	app.emit("pi:checkout-activity:end", { jobId: "cmd-1" });
+	assert.equal(await app.call("direct-4"), undefined);
 });

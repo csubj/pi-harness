@@ -1,4 +1,5 @@
 import { realpath } from "node:fs/promises";
+import { isAbsolute } from "node:path";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { isWithin, resolveRepoTarget } from "@hcflabs/pi-repo";
 
@@ -22,6 +23,18 @@ async function checkoutKey(pi: ExtensionAPI, ctx: ExtensionContext): Promise<str
 	const root = result.stdout.replace(/\r?\n$/, "");
 	if (!root || /[\r\n\0]/.test(root)) throw new Error("Git returned a malformed checkout root during delegation admission.");
 	return await realpath(root);
+}
+
+/** A trusted tool reports a long-running Main command that can write in `cwd`. Payload: `{ jobId, cwd }`. */
+export const CHECKOUT_ACTIVITY_START = "pi:checkout-activity:start";
+/** The tool reports that the job's processes are proved stopped. Payload: `{ jobId }`. */
+export const CHECKOUT_ACTIVITY_END = "pi:checkout-activity:end";
+
+/** `herdr_command` writes only when it starts a job with write access. Read, stop, and read-access jobs do not write. */
+function writingMainCall(toolName: string, input: unknown): boolean {
+	if (toolName !== "herdr_command") return !MAIN_NON_WRITING_TOOLS.has(toolName);
+	const { action, access } = (input ?? {}) as { action?: unknown; access?: unknown };
+	return action === "start" && access !== "read";
 }
 
 /** Two scopes conflict when one contains the other. A non-Git parent directory covers its whole subtree. */
@@ -64,7 +77,7 @@ export function registerCheckoutAdmission(pi: ExtensionAPI, classifyDirect: (inp
 	};
 	pi.on("tool_call", async (event, ctx) => {
 		const direct = event.toolName === "delegate_task";
-		const classified = direct ? classifyDirect(event.input) : !MAIN_NON_WRITING_TOOLS.has(event.toolName);
+		const classified = direct ? classifyDirect(event.input) : writingMainCall(event.toolName, event.input);
 		if (classified === false) return;
 		const repos: ReadonlyArray<string | undefined> = classified === true ? [undefined] : classified;
 		const call: { direct: boolean; keys?: readonly string[] } = { direct };
@@ -94,6 +107,22 @@ export function registerCheckoutAdmission(pi: ExtensionAPI, classifyDirect: (inp
 			};
 		}
 		call.keys = keys;
+	});
+	// A long-running Main activity is a Main call that stays in flight after its tool result.
+	// Its key is the command's directory, so it conflicts with a writer in the checkout that contains it.
+	pi.events.on(CHECKOUT_ACTIVITY_START, (data) => {
+		const { jobId, cwd } = (data ?? {}) as { jobId?: unknown; cwd?: unknown };
+		if (typeof jobId !== "string" || !jobId || typeof cwd !== "string" || !isAbsolute(cwd)) return;
+		const id = `activity:${jobId}`;
+		heldCalls.add(id);
+		calls.set(id, { direct: false, keys: [cwd] });
+	});
+	pi.events.on(CHECKOUT_ACTIVITY_END, (data) => {
+		const { jobId } = (data ?? {}) as { jobId?: unknown };
+		if (typeof jobId !== "string") return;
+		const id = `activity:${jobId}`;
+		heldCalls.delete(id);
+		release(id);
 	});
 	pi.on("tool_result", (event) => release(event.toolCallId));
 	pi.on("tool_execution_end", (event) => release(event.toolCallId));

@@ -95,6 +95,8 @@ Direct writes change Main's checkout immediately. They require no clean checkout
 
 A task with `repo` runs in that Repository target instead of Main's checkout. Admission resolves the target before the launch and reserves the checkout of each target at one time. Two checkouts conflict when one contains the other. Thus a Main call from a non-Git parent directory covers the checkout of every Repository target in it, and writers in two different Repository targets can run together. An invalid `repo` blocks the call before any reservation. Admission does not parse Bash text for a directory.
 
+A trusted tool can report long-running Main activity with two Pi events. `pi:checkout-activity:start` carries `{ jobId, cwd }`, and `pi:checkout-activity:end` carries `{ jobId }`. Admission treats an open activity as a Main call in progress in `cwd`, so a direct writer in a checkout that contains `cwd` cannot start. The activity ends only with its end event. `herdr_command` sends the end event after it proves that a write job stopped. The events coordinate one Pi session; they are not a sandbox.
+
 A write request runs its tasks in sequence. It holds checkout admission after the initial handle returns. Competing direct writers and Main writes fail until the extension proves that all owned workers stopped. To keep Main free to write, use `mode: isolated`. This mode gives worktree checks and explicit integration, not immediate changes to the shared checkout. Parallel read requests still run concurrently.
 
 A failure in a write request stops further dispatch, but a worker with an uncertain state can still run. Chains replace each literal `{previous}` with the preceding successful answer and stop on failure. Task outcome and worker termination are separate.
@@ -479,7 +481,7 @@ Every child launch:
 2. loads only declared resources plus required internal adapters;
 3. resolves Skill and model names from Pi's effective registries;
 4. installs an exact tool policy;
-5. excludes Main-only delegation, integration, and recovery tools, `herdr_handoff`, and `ask_question`; and
+5. excludes Main-only delegation, integration, and recovery tools, `herdr_handoff`, `herdr_command`, and `ask_question`; and
 6. prepends the delegated-subagent identity contract.
 
 An empty `tools` list adds no base tools. Selected extension tools can still activate.
@@ -508,7 +510,7 @@ Before launch, the extension checks each selected entry against Pi's documented 
 
 The extension never modifies the file. Fix the entry or choose another server. The extension passes valid `auth`, `oauth`, and `description` fields through, so Pi's native provider auth and OAuth apply. `oauth.clientRegistration` must be `dcr` or `cimd`. A `cimd` entry cannot use `clientId` or `clientName`. Any `callbackUrl` must use localhost or 127.0.0.1 with path `/callback`.
 
-The extension still ignores project MCP overrides. A project cannot change the global server allowlist or exposure of the Role. Missing Skills, tools, MCP servers, Roles, or routes fail before productive work starts. The extension excludes Main-only delegation, integration, and recovery tools, `herdr_handoff`, and `ask_question` from children.
+The extension still ignores project MCP overrides. A project cannot change the global server allowlist or exposure of the Role. Missing Skills, tools, MCP servers, Roles, or routes fail before productive work starts. The extension excludes Main-only delegation, integration, and recovery tools, `herdr_handoff`, `herdr_command`, and `ask_question` from children.
 
 Isolated Herdr Role launches receive the same turn, token, and child-runtime budget metadata as ephemeral launches. Retained workers therefore keep one non-refilling session budget across follow-ups rather than receiving a new request budget.
 

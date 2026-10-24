@@ -718,7 +718,7 @@ test("Role launch resolves call, Role, then Model Task routes", async (t) => {
 	assert.deepEqual(launch.missingSkills, []);
 	assert.deepEqual(launch.args.slice(0, 5), [
 		"--no-session", "--no-extensions", "--no-skills",
-		"--exclude-tools", "delegate_task,ask_question,subagent_status,subagent_resume,subagent_stage,subagent_integrate,subagent_abort,herdr_handoff",
+		"--exclude-tools", "delegate_task,ask_question,subagent_status,subagent_resume,subagent_stage,subagent_integrate,subagent_abort,herdr_handoff,herdr_command",
 	]);
 	assert.deepEqual(valuesAfter(launch.args, "--extension").slice(0, 2), ["/roles/reviewer.ts", "/caller/adapter.ts"]);
 	assert.equal(valuesAfter(launch.args, "--extension").filter((path) => path.endsWith("/pi-multi-codex/extensions/multi-codex.ts")).length, 1);
@@ -736,7 +736,7 @@ test("Role launch resolves call, Role, then Model Task routes", async (t) => {
 		"You are a delegated Pi Subagent, not Main. Execute the assigned Role and task directly. Main-only delegation rules do not apply. Recursive delegation is unavailable; do not seek or invoke delegation tools.\n\nReview only the requested change.",
 	);
 
-	assert.equal(valueAfter(launch.args, "--exclude-tools"), "delegate_task,ask_question,subagent_status,subagent_resume,subagent_stage,subagent_integrate,subagent_abort,herdr_handoff");
+	assert.equal(valueAfter(launch.args, "--exclude-tools"), "delegate_task,ask_question,subagent_status,subagent_resume,subagent_stage,subagent_integrate,subagent_abort,herdr_handoff,herdr_command");
 
 	const missingRole = { ...role, skills: [...role.skills, "missing"] };
 	assert.throws(

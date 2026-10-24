@@ -59,11 +59,11 @@ function shellPromptFollows(screen: string, token: string): boolean {
  * a non-blank line after it. An occupied pane is left untouched so `agent start` reports
  * `agent_pane_busy` itself. Returns the failed Herdr result, or undefined when ready.
  */
-async function awaitShellPrompt<Options>(
+export async function awaitShellPrompt<Options>(
 	client: Pick<HerdrClient<Options>, "exec">,
 	pane: string,
 	options: Options,
-	wait: (milliseconds: number) => Promise<void>,
+	wait: (milliseconds: number) => Promise<void> = delay,
 ): Promise<HerdrExecResult | undefined> {
 	const info = await client.exec(["pane", "process-info", "--pane", pane], options);
 	if (info.code !== 0 || info.killed) return info;

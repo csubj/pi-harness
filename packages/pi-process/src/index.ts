@@ -1,5 +1,7 @@
 import { spawn } from "node:child_process";
 
+export { assertPrivateLease, scanProcessLease, type LeaseScanResult } from "./process-lease.ts";
+
 const DEFAULT_EXEC_TIMEOUT_MS = 30_000;
 const DEFAULT_OUTPUT_LIMIT_BYTES = 64 * 1024;
 const PROCESS_TERMINATION_GRACE_MS = 250;

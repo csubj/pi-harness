@@ -32,6 +32,7 @@ For a ready-to-use Pi workflow, see [`@hcflabs/pi-herdr-tools`](https://github.c
 | `json` | function | Requires a successful exit and parses a JSON object. |
 | `hasHerdrErrorCode` | function | Detects structured CLI errors in stdout or stderr. |
 | `startPiAgent` | function | Validates and runs the shared `agent start --kind pi --pane ... --` boundary after a shell-readiness probe. |
+| `awaitShellPrompt` | function | Runs the same shell-readiness probe before a caller types a command into a pane. Returns the failed Herdr result, or `undefined` when the shell reads input. |
 
 ### `startPiAgent`
 
