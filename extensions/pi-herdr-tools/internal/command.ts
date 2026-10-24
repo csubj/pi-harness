@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { lstat, mkdir, readFile, realpath, rm, writeFile } from "node:fs/promises";
+import { lstat, mkdir, readdir, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { isAbsolute, join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
@@ -106,6 +106,10 @@ type Job = {
 	token: string;
 	directory: string;
 	paneId: string;
+	/** Herdr's terminal identity of the job pane. A pane ID alone can name a later pane. */
+	terminalId: string;
+	/** Device and inode of the lease file at creation. A replaced or hard-linked lease fails the check. */
+	lease: { dev: number; ino: number };
 	cwd: string;
 	command: string;
 	args: string[];
@@ -118,11 +122,13 @@ type Job = {
 	uncertain?: string;
 	/** The status at a proved stop. The job directory is removed after the proof. */
 	finalStatus?: Status;
+	/** The runner's process group, when the runner leads its own job group. */
+	group?: number;
 };
 
 type Status =
 	| { state: "starting" }
-	| { state: "running"; pid: number }
+	| { state: "running"; pid: number; group?: number }
 	| { state: "ended"; code: number | null; signal: string | null; timedOut: boolean; error?: string };
 
 async function readJson(path: string): Promise<Record<string, unknown> | undefined> {
@@ -150,10 +156,11 @@ export async function jobStatus(job: Pick<Job, "directory" | "token">): Promise<
 	}
 	const started = await readJson(join(job.directory, "started.json"));
 	if (!started) return { state: "starting" };
-	if (started.token !== job.token || typeof started.pid !== "number" || !Number.isSafeInteger(started.pid) || started.pid <= 0) {
+	const positive = (value: unknown) => typeof value === "number" && Number.isSafeInteger(value) && value > 0;
+	if (started.token !== job.token || !positive(started.pid) || (started.group !== undefined && !positive(started.group))) {
 		throw new Error("The job start record is malformed or belongs to another job token.");
 	}
-	return { state: "running", pid: started.pid };
+	return { state: "running", pid: started.pid as number, ...(started.group === undefined ? {} : { group: started.group as number }) };
 }
 
 const describeStatus = (status: Status) => status.state === "ended"
@@ -168,36 +175,74 @@ export default function herdrCommandExtension(pi: ExtensionAPI, options: { agent
 	const reporter = registerConfigReporting(pi, [store]);
 	const jobs = new Map<string, Job>();
 	const lsof = options.lsof ?? "lsof";
+	const commandsDirectory = join(extensionConfigDir("pi-herdr-tools", options.agentDir), "commands");
+	let closed = false;
 
 	const endActivity = (job: Job) => {
 		if (!job.activity) return;
 		job.activity = false;
 		pi.events.emit(CHECKOUT_ACTIVITY_END, { jobId: job.id });
 	};
-	const leaseHolders = async (job: Job) => await scanProcessLease(join(job.directory, "process.lease"),
-		(args) => pi.exec(lsof, args, { cwd: job.directory, timeout: 5_000 }));
+	const leaseHolders = async (job: Job) => {
+		const path = join(job.directory, "process.lease");
+		const info = await lstat(path);
+		if (info.dev !== job.lease.dev || info.ino !== job.lease.ino) throw new Error(`Job ${job.id}: the lease file was replaced; stop is unproved. Evidence: ${job.directory}.`);
+		return await scanProcessLease(path, (args) => pi.exec(lsof, args, { cwd: job.directory, timeout: 5_000 }));
+	};
+	/** Whether the job pane still exists. A pane with the same ID but another terminal is a later pane, not the job pane. */
 	const paneExists = async (job: Job) => {
 		const result = await herdr.exec(["pane", "get", job.paneId], { cwd: job.cwd });
-		if (result.code === 0 && !result.killed) return true;
 		if (hasHerdrErrorCode(result, "pane_not_found")) return false;
-		throw new Error(`Herdr could not inspect pane ${job.paneId}: ${herdrCommandFailure(["pane", "get", job.paneId], result)}`);
+		if (result.code !== 0 || result.killed) throw new Error(`Herdr could not inspect pane ${job.paneId}: ${herdrCommandFailure(["pane", "get", job.paneId], result)}`);
+		const pane = (JSON.parse(result.stdout) as { result?: { pane?: Record<string, unknown> } }).result?.pane;
+		return pane?.pane_id === job.paneId && pane.terminal_id === job.terminalId;
+	};
+	/** PIDs in the job's process group. The group outlives the runner while a child that dropped the lease runs. */
+	const groupMembers = async (job: Job, group: number) => {
+		const result = await pi.exec("pgrep", ["-g", String(group)], { cwd: job.directory, timeout: 5_000 });
+		if (result.code === 1 && !result.stdout.trim()) return [];
+		if (result.code !== 0 || result.killed) throw new Error(`Job ${job.id}: pgrep could not list process group ${group}; stop is unproved.`);
+		return result.stdout.trim().split(/\s+/).map(Number).filter((pid) => Number.isSafeInteger(pid) && pid > 0);
+	};
+	const signal = (target: number, name: NodeJS.Signals) => {
+		try { process.kill(target, name); } catch (error) { if ((error as NodeJS.ErrnoException).code !== "ESRCH") throw error; }
 	};
 
 	/** Stop the exact job: signal leased processes, close its own pane, then prove pane absence and empty lease scans. */
 	const stopJob = async (job: Job): Promise<string> => {
 		if (job.stopped) return `Job ${job.id} is already stopped.`;
-		let status = await jobStatus(job);
-		if (status.state !== "ended") {
-			// Signal only processes that hold this job's private lease. A saved PID alone can belong to another process now.
-			for (const signal of ["SIGTERM", "SIGKILL"] as const) {
-				for (const pid of await leaseHolders(job)) {
-					try { process.kill(pid, signal); } catch (error) { if ((error as NodeJS.ErrnoException).code !== "ESRCH") throw error; }
-				}
-				for (let waited = 0; waited < STOP_WAIT_MS && (await leaseHolders(job)).length; waited += POLL_MS) await delay(POLL_MS);
-				if (!(await leaseHolders(job)).length) break;
-			}
-			status = await jobStatus(job);
+		// The start record keeps the runner's process group also after the runner saved its status.
+		const started = await readJson(join(job.directory, "started.json")).catch(() => undefined);
+		const savedGroup = started?.token === job.token && typeof started.group === "number" && Number.isSafeInteger(started.group) && started.group > 1
+			? started.group : undefined;
+		const group = job.group ?? savedGroup;
+		if (group !== undefined) job.group = group;
+		// Signal the processes that hold this job's private lease, also after the runner saved a status:
+		// a background child can outlive the command. While a lease holder runs, the job group is still ours.
+		for (const name of ["SIGTERM", "SIGKILL"] as const) {
+			const holders = await leaseHolders(job);
+			if (!holders.length) break;
+			if (group !== undefined) signal(-group, name);
+			for (const pid of holders) signal(pid, name);
+			for (let waited = 0; waited < STOP_WAIT_MS && (await leaseHolders(job)).length; waited += POLL_MS) await delay(POLL_MS);
 		}
+		if (group !== undefined) {
+			let members = await groupMembers(job, group);
+			if (members.length) {
+				// The runner is dead here, because it holds the lease until it exits. A live process with the group ID
+				// is a later process that reused the number, so its group is not the job group.
+				let leaderAlive = true;
+				try { process.kill(group, 0); } catch (error) { leaderAlive = (error as NodeJS.ErrnoException).code !== "ESRCH"; }
+				if (leaderAlive) throw new Error(`Job ${job.id}: process group ${group} now has another leader; stop is unproved. Check processes ${members.join(", ")}.`);
+				for (const name of ["SIGTERM", "SIGKILL"] as const) {
+					signal(-group, name);
+					for (let waited = 0; waited < STOP_WAIT_MS && (members = await groupMembers(job, group)).length; waited += POLL_MS) await delay(POLL_MS);
+					if (!members.length) break;
+				}
+				if (members.length) throw new Error(`Job ${job.id}: processes ${members.join(", ")} remain in its process group; stop is unproved.`);
+			}
+		}
+		const status = await jobStatus(job);
 		if (await paneExists(job)) {
 			const closed = await herdr.exec(["pane", "close", job.paneId], { cwd: job.cwd });
 			if (closed.code !== 0 || closed.killed) throw new Error(`Job ${job.id}: Herdr did not close pane ${job.paneId}: ${herdrCommandFailure(["pane", "close", job.paneId], closed)}`);
@@ -244,6 +289,7 @@ export default function herdrCommandExtension(pi: ExtensionAPI, options: { agent
 				let output = "";
 				let truncated = false;
 				if (job.stopped) output = "(the pane is closed)";
+				else if (!await paneExists(job)) output = "(the job pane is gone; a pane with this ID, if any, belongs to something else)";
 				else {
 					const read = await herdr.exec(["pane", "read", job.paneId, "--source", "recent-unwrapped", "--lines", String(lines), "--format", "text"], { cwd: job.cwd });
 					if (read.code !== 0 || read.killed) output = `(Herdr could not read pane ${job.paneId}: ${herdrCommandFailure(["pane", "read", job.paneId], read)})`;
@@ -286,9 +332,10 @@ export default function herdrCommandExtension(pi: ExtensionAPI, options: { agent
 			const maxRuntimeMs = config.maxRuntimeMinutes * 60_000;
 			await writeFile(join(directory, "launch.json"), `${JSON.stringify({ id, token, command: params.command, args: params.args ?? [], cwd, maxRuntimeMs })}\n`, { mode: 0o600, flag: "wx" });
 			await writeFile(join(directory, "process.lease"), "", { mode: 0o600, flag: "wx" });
+			const leaseInfo = await lstat(join(directory, "process.lease"));
 			signal?.throwIfAborted();
 
-			const job: Job = { id, token, directory, paneId: "", cwd, command: params.command!, args: params.args ?? [], access: params.access!, maxRuntimeMs, activity: false };
+			const job: Job = { id, token, directory, paneId: "", terminalId: "", lease: { dev: leaseInfo.dev, ino: leaseInfo.ino }, cwd, command: params.command!, args: params.args ?? [], access: params.access!, maxRuntimeMs, activity: false };
 			// Register the activity before the command can start, so a direct writer cannot start in the same checkout.
 			if (job.access === "write") {
 				job.activity = true;
@@ -297,11 +344,13 @@ export default function herdrCommandExtension(pi: ExtensionAPI, options: { agent
 			const splitArgs = ["pane", "split", callerPane, "--direction", config.split, "--no-focus", "--cwd", cwd];
 			const split = await herdr.exec(splitArgs, { cwd });
 			let paneId: string | undefined;
+			let terminalId: string | undefined;
 			try {
 				if (split.code !== 0 || split.killed) throw new Error(herdrCommandFailure(splitArgs, split));
 				const pane = (JSON.parse(split.stdout) as { result?: { pane?: Record<string, unknown> } }).result?.pane;
 				paneId = typeof pane?.pane_id === "string" ? pane.pane_id : undefined;
-				if (!paneId || paneId === callerPane || pane?.focused !== false || typeof pane.cwd !== "string" || await realpath(pane.cwd) !== cwd) {
+				terminalId = typeof pane?.terminal_id === "string" && pane.terminal_id ? pane.terminal_id : undefined;
+				if (!paneId || !terminalId || paneId === callerPane || pane?.focused !== false || typeof pane.cwd !== "string" || await realpath(pane.cwd) !== cwd) {
 					throw new Error(`Herdr returned an unverified pane (${paneId ?? "no pane ID"}).`);
 				}
 			} catch (error) {
@@ -310,8 +359,17 @@ export default function herdrCommandExtension(pi: ExtensionAPI, options: { agent
 				throw new Error(`herdr_command could not create a verified pane${paneId ? `; inspect pane ${paneId}` : ""}: ${error instanceof Error ? error.message : String(error)}. No command was started.`, { cause: error });
 			}
 			job.paneId = paneId;
+			job.terminalId = terminalId!;
 			jobs.set(id, job);
-			const ready = await awaitShellPrompt(herdr, paneId, { cwd });
+			await writeFile(join(directory, "job.json"), `${JSON.stringify({ id, token, paneId, terminalId, cwd, access: job.access })}\n`, { mode: 0o600, flag: "wx" });
+			// A session that ended during the split must not receive a new command.
+			if (closed) {
+				await herdr.exec(["pane", "close", paneId], { cwd });
+				jobs.delete(id);
+				endActivity(job);
+				throw new Error("herdr_command: the session ended during start. The pane was closed; no command was started.");
+			}
+			const ready = await awaitShellPrompt(herdr, paneId, { cwd }, undefined, true);
 			if (ready) {
 				await herdr.exec(["pane", "close", paneId], { cwd });
 				jobs.delete(id);
@@ -330,7 +388,45 @@ export default function herdrCommandExtension(pi: ExtensionAPI, options: { agent
 		},
 	});
 
+	// Jobs of an earlier session runtime can still run. Restore each job whose pane or leased processes remain,
+	// and its write activity, so that stop can still prove its end. Do not restart any command.
+	pi.on("session_start", async (_event, ctx) => {
+		closed = false;
+		let entries: string[];
+		try { entries = await readdir(commandsDirectory); }
+		catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return; throw error; }
+		for (const id of entries) {
+			if (!JOB_ID.test(id) || jobs.has(id)) continue;
+			const directory = join(commandsDirectory, id);
+			try {
+				const saved = await readJson(join(directory, "job.json"));
+				const launch = await readJson(join(directory, "launch.json"));
+				if (!saved || !launch || saved.id !== id || saved.token !== launch.token || typeof saved.paneId !== "string"
+					|| typeof saved.terminalId !== "string" || typeof saved.cwd !== "string" || (saved.access !== "read" && saved.access !== "write")) continue;
+				const leaseInfo = await lstat(join(directory, "process.lease"));
+				const job: Job = { id, token: saved.token as string, directory, paneId: saved.paneId, terminalId: saved.terminalId,
+					lease: { dev: leaseInfo.dev, ino: leaseInfo.ino }, cwd: saved.cwd, command: String(launch.command), args: [],
+					access: saved.access, maxRuntimeMs: 0, activity: false };
+				if (!(await leaseHolders(job)).length && !await paneExists(job)) {
+					await rm(directory, { recursive: true, force: true });
+					continue;
+				}
+				jobs.set(id, job);
+				if (job.access === "write") {
+					job.activity = true;
+					pi.events.emit(CHECKOUT_ACTIVITY_START, { jobId: id, cwd: job.cwd });
+				}
+				const text = `herdr_command restored job ${id} from an earlier session (pane ${job.paneId}, access ${job.access}). Use herdr_command stop with this id to end it.`;
+				if (ctx.hasUI) ctx.ui.notify(text, "warning");
+				else process.stderr.write(`${text}\n`);
+			} catch (error) {
+				console.error(`herdr_command: job ${id} could not be restored: ${error instanceof Error ? error.message : String(error)} Evidence: ${directory}.`);
+			}
+		}
+	});
+
 	pi.on("session_shutdown", async () => {
+		closed = true;
 		// A job does not outlive its session. Unproved stops keep their evidence in the job directory.
 		for (const job of jobs.values()) {
 			if (job.stopped) continue;

@@ -2,8 +2,9 @@
 // Run one herdr_command job in its pane. Usage: node command-runner.mjs <job-directory>
 // The runner reads the command from launch.json, so the shell never parses the argument list.
 // It saves the exit status in status.json, outside the terminal, because pane output can imitate any text.
-// The command and its children inherit the open process lease file. An empty lsof scan of that file proves they stopped.
-import { spawn } from "node:child_process";
+// The command and its children inherit the open process lease file. A child that closes inherited files drops the lease,
+// so the runner also records its process group. The shell makes the runner the leader of its own job group.
+import { execFileSync, spawn } from "node:child_process";
 import { closeSync, openSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -22,6 +23,11 @@ function save(name, value) {
 }
 
 const launch = JSON.parse(readFileSync(join(directory, "launch.json"), "utf8"));
+let group;
+try {
+	const pgid = Number(execFileSync("ps", ["-o", "pgid=", "-p", String(process.pid)], { encoding: "utf8" }).trim());
+	if (pgid === process.pid) group = pgid;
+} catch { /* Without ps, the lease is the only process evidence. */ }
 const lease = openSync(join(directory, "process.lease"), "r");
 let timedOut = false;
 let finished = false;
@@ -43,13 +49,21 @@ function finish(status) {
 	console.log(`\n[herdr_command ${launch.id}] ${outcome}${timedOut ? " after the runtime limit" : ""}.`);
 }
 
+/** Signal the whole job group when the runner leads it, so children that dropped the lease also get the signal. */
+function signalJob(signal) {
+	if (group !== undefined) {
+		try { process.kill(-group, signal); return; } catch { /* Fall back to the direct child. */ }
+	}
+	child.kill(signal);
+}
+
 const runtimeTimer = setTimeout(() => {
 	timedOut = true;
-	child.kill("SIGTERM");
+	signalJob("SIGTERM");
 	killTimer = setTimeout(() => child.kill("SIGKILL"), KILL_GRACE_MS);
 }, launch.maxRuntimeMs);
 
-child.once("spawn", () => save("started.json", { token: launch.token, pid: child.pid, startedAt: Date.now() }));
+child.once("spawn", () => save("started.json", { token: launch.token, pid: child.pid, runnerPid: process.pid, ...(group === undefined ? {} : { group }), startedAt: Date.now() }));
 child.once("error", (error) => finish({ error: error.message.slice(0, 500) }));
 child.once("exit", (code, signal) => finish({ code, signal }));
 

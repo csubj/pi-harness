@@ -99,7 +99,9 @@ A small runner script starts the command without a shell and saves its exit code
 
 Set `access` to `write` when the command can change files, Git state, or external resources. A write job blocks direct `pi-subagent` writers in its checkout until `stop` proves that the job ended. Nothing enforces `read`.
 
-`stop` signals only the processes that hold the job's private lease file. It then closes only the job pane and requires two empty `lsof` scans of the lease. Session shutdown stops each job in the same way. Delegated subagents cannot use the tool.
+`stop` signals the processes that hold the job's private lease file, and the job's process group. It then closes only the job pane and requires two empty `lsof` scans of the lease and an empty process group. The proof does not cover a process that leaves the group and closes the lease. Examples are a daemon, a `sudo` or `ssh` session, and a container. `read` and `stop` check the pane's terminal identity, so they never act on a later pane with the same ID.
+
+Session shutdown stops each job in the same way. If a stop cannot prove the end, the next session restores the job and its write activity, so `stop` can try again. Delegated subagents cannot use the tool.
 
 The tool is not a sandbox. It does not authorize a push, a publication, a deployment, or the use of credentials. It does not hide secrets that a command prints.
 
@@ -179,7 +181,7 @@ Side threads select the first authenticated viable route before launch. Titles u
 
 ## State and storage
 
-Each `herdr_command` job keeps its launch record, saved status, and lease file in `~/.pi/agent/config/pi-herdr-tools/commands/<id>/`. A proved stop removes that directory. A job does not survive its session.
+Each `herdr_command` job keeps its launch record, saved status, and lease file in `~/.pi/agent/config/pi-herdr-tools/commands/<id>/`. A proved stop removes that directory. A new session restores each job whose pane or leased processes remain, and it never restarts a command.
 
 Clones are separate session files in the Pi-selected session directory. Each contains only the active path. Pi names the clone file for a saved source session; otherwise, the extension creates and names it. Saved `pi-herdr-rename/title` entries restore display titles and semantic branches without another model request. Older titles get no migration.
 
