@@ -24,6 +24,10 @@ const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", 
 type WidgetStatus = "working" | "success" | "failure";
 type WidgetItem = {
 	ref: string;
+	/** Display numbers only; they group rows and never identify a pane. */
+	workflow: number;
+	worker: number;
+	workers: number;
 	role: string;
 	model: string;
 	thinkingLevel: string;
@@ -76,45 +80,88 @@ function activityLabel(activity: DirectToolActivity | undefined): string | undef
 	return parts.length ? parts.join(" · ") : undefined;
 }
 
+function renderWorkerRow(item: WidgetItem, width: number, now: number, spinnerIndex: number, theme: Theme): string {
+	const prefix = `${statusGlyph(item.status, spinnerIndex, theme)} ${theme.fg("accent", `${item.ref} ${item.role}`)} ${item.status === "working" ? "" : `${statusLabel(item.status)} · `}`;
+	const metrics = [
+		`${item.model}/${item.thinkingLevel}`,
+		tokenLabel(item.tokens, item.cost),
+		formatDuration((item.finishedAt ?? now) - item.startedAt),
+	];
+	const activity = activityLabel(item.activity);
+	if (activity) metrics.push(activity); // Activity is the first metric removed on narrow rows.
+	while (metrics.length && width - visibleWidth(prefix) - visibleWidth(` · ${metrics.join(" · ")}`) < 8) {
+		if (metrics.length === 2) metrics.shift(); // Preserve measured tokens ahead of route details.
+		else metrics.pop();
+	}
+	const suffix = metrics.length ? ` · ${theme.fg("muted", metrics.join(" · "))}` : "";
+	const name = truncateToWidth(theme.fg("text", item.name), Math.max(0, width - visibleWidth(prefix) - visibleWidth(suffix)));
+	return truncateToWidth(`${prefix}${name}${suffix}`, width);
+}
+
+const STATUS_RANK: Record<WidgetStatus, number> = { failure: 0, working: 1, success: 2 };
+const STATUS_COUNT_ORDER = ["working", "failure", "success"] as const;
+
+function statusCounts(items: readonly WidgetItem[]): string {
+	const counts: Record<WidgetStatus, number> = { working: 0, success: 0, failure: 0 };
+	for (const { status } of items) counts[status] += 1;
+	return STATUS_COUNT_ORDER.flatMap((status) => counts[status] ? [`${counts[status]} ${statusLabel(status)}`] : []).join(" · ");
+}
+
+/** One rendered widget line. `focus` names a live worker item that a click may focus. */
+type WidgetRow = { text: string; focus?: string };
+type TreeLine = { top: number; child?: { last: boolean }; item?: [string, WidgetItem]; group?: WidgetItem[] };
+
+/**
+ * Render the direct widget as a tree under a Main header.
+ * A workflow with one launched worker is a leaf row. A workflow with more workers gets a group row.
+ * `focusable` tells which item IDs have a live handle. Only fully visible references become click targets.
+ */
 function renderWidgetRows(
-	items: WidgetItem[],
+	items: ReadonlyArray<[string, WidgetItem]>,
 	width: number,
 	now: number,
 	spinnerIndex: number,
 	theme: Theme,
-): string[] {
-	const ordered = [...items].sort((a, b) =>
-		(a.status === "failure" ? 0 : a.status === "working" ? 1 : 2)
-		- (b.status === "failure" ? 0 : b.status === "working" ? 1 : 2));
-	const visible = ordered.slice(0, ordered.length > MAX_WIDGET_LINES ? MAX_WIDGET_LINES - 1 : MAX_WIDGET_LINES);
-	const lines = visible.map((item) => {
-		const prefix = `${statusGlyph(item.status, spinnerIndex, theme)} ${theme.fg("accent", `${item.ref} ${item.role}`)} ${item.status === "working" ? "" : `${statusLabel(item.status)} · `}`;
-		const metrics = [
-			`${item.model}/${item.thinkingLevel}`,
-			tokenLabel(item.tokens, item.cost),
-			formatDuration((item.finishedAt ?? now) - item.startedAt),
-		];
-		const activity = activityLabel(item.activity);
-		if (activity) metrics.push(activity); // Activity is the first metric removed on narrow rows.
-		while (metrics.length && width - visibleWidth(prefix) - visibleWidth(` · ${metrics.join(" · ")}`) < 8) {
-			if (metrics.length === 2) metrics.shift(); // Preserve measured tokens ahead of route details.
-			else metrics.pop();
-		}
-		const suffix = metrics.length ? ` · ${theme.fg("muted", metrics.join(" · "))}` : "";
-		const name = truncateToWidth(theme.fg("text", item.name), Math.max(0, width - visibleWidth(prefix) - visibleWidth(suffix)));
-		return truncateToWidth(`${prefix}${name}${suffix}`, width);
+	focusable: (id: string) => boolean = () => false,
+): WidgetRow[] {
+	if (!items.length) return [];
+	const groups = new Map<number, Array<[string, WidgetItem]>>();
+	for (const entry of items) groups.set(entry[1].workflow, [...groups.get(entry[1].workflow) ?? [], entry]);
+	const rank = (list: ReadonlyArray<[string, WidgetItem]>) => Math.min(...list.map(([, item]) => STATUS_RANK[item.status]));
+	const ordered = [...groups].sort(([a, left], [b, right]) => rank(left) - rank(right) || a - b)
+		.map(([, list]) => list.sort(([, a], [, b]) => a.worker - b.worker));
+	const lines: TreeLine[] = [];
+	ordered.forEach((list, top) => {
+		if (list.length === 1 && list[0]![1].workers === 1) return void lines.push({ top, item: list[0]! });
+		lines.push({ top, group: list.map(([, item]) => item) });
+		list.forEach((entry, index) => lines.push({ top, child: { last: index === list.length - 1 }, item: entry }));
 	});
-	const hidden = ordered.slice(visible.length);
-	if (hidden.length) {
-		const counts: Record<WidgetStatus, number> = { working: 0, success: 0, failure: 0 };
-		for (const { status } of hidden) counts[status] += 1;
-		lines.push(truncateToWidth(theme.fg("muted", [
-			`… ${hidden.length} more`,
-			...(["working", "success", "failure"] as const).flatMap((status) =>
-				counts[status] ? [`${counts[status]} ${statusLabel(status)}`] : []),
-		].join(" · ")), width));
+	const visible = lines.length > MAX_WIDGET_LINES ? lines.slice(0, MAX_WIDGET_LINES - 1) : lines;
+	const hidden = lines.slice(visible.length).flatMap(({ item }) => item ? [item[1]] : []);
+	const lastTop = hidden.length ? -1 : visible.at(-1)!.top;
+	const rows: WidgetRow[] = [{ text: truncateToWidth(`${theme.fg("accent", "Main")}${theme.fg("muted", ` · ${statusCounts(items.map(([, item]) => item))}`)}`, width) }];
+	for (const line of visible) {
+		const topLast = line.top === lastTop;
+		const connector = line.child
+			? `${topLast ? "   " : "│  "}${line.child.last ? "└─ " : "├─ "}`
+			: topLast ? "└─ " : "├─ ";
+		const branch = theme.fg("dim", connector);
+		const room = Math.max(0, width - visibleWidth(connector));
+		if (line.group) {
+			const status = line.group.reduce<WidgetStatus>((best, { status }) => STATUS_RANK[status] < STATUS_RANK[best] ? status : best, "success");
+			const first = line.group[0]!;
+			const label = `${statusGlyph(status, spinnerIndex, theme)} ${theme.fg("accent", `D${first.workflow}`)}${theme.fg("muted", ` · ${first.workers} workers`)}`;
+			rows.push({ text: truncateToWidth(`${branch}${truncateToWidth(label, room)}`, width) });
+			continue;
+		}
+		const [id, item] = line.item!;
+		const text = truncateToWidth(`${branch}${renderWorkerRow(item, room, now, spinnerIndex, theme)}`, width);
+		// The glyph, a space, and the full reference must be visible before a click can name this worker.
+		const referenceVisible = visibleWidth(connector) + 2 + visibleWidth(item.ref) <= width;
+		rows.push({ text, ...(item.status === "working" && referenceVisible && focusable(id) ? { focus: id } : {}) });
 	}
-	return lines;
+	if (hidden.length) rows.push({ text: truncateToWidth(`${theme.fg("dim", "└─ ")}${theme.fg("muted", `… ${hidden.length} more · ${statusCounts(hidden)}`)}`, width) });
+	return rows;
 }
 
 function replaceRouteModel(ctx: ExtensionContext, reference: string, route: ResolvedTaskRoute): ResolvedTaskRoute {
@@ -460,14 +507,45 @@ export default function subagentExtension(pi: ExtensionAPI): void {
 		widgetTimer.unref();
 	};
 
+	let focusInFlight = false;
+	// A click is a request only. The handle checks the exact Herdr agent identity before it moves focus.
+	const focusWorker = (id: string) => {
+		const handle = tokenHandles.get(id);
+		const item = widgetItems.get(id);
+		if (!handle || item?.status !== "working" || focusInFlight) return;
+		const epoch = sessionEpoch;
+		const ctx = latestCtx;
+		focusInFlight = true;
+		void handle.focus().catch((error: unknown) => {
+			if (epoch === sessionEpoch && ctx?.hasUI) {
+				ctx.ui.notify(`Cannot focus ${item.ref}: ${error instanceof Error ? error.message : String(error)}`, "warning");
+			}
+		}).finally(() => { focusInFlight = false; });
+	};
+
 	const ensureWidget = (ctx: ExtensionContext) => {
 		if (!ctx.hasUI || widgetInstalled) return;
 		widgetInstalled = true;
 		ctx.ui.setWidget(WIDGET_KEY, (tui, theme): Component => {
 			activeTui = tui;
+			let renderedWidth = -1;
+			let hits: Array<{ row: number; to: number; id: string }> = [];
 			return {
 				invalidate() {},
-				render: (width) => renderWidgetRows([...widgetItems.values()], width, Date.now(), spinnerIndex, theme),
+				render(width) {
+					const rows = renderWidgetRows([...widgetItems], width, Date.now(), spinnerIndex, theme, (id) => tokenHandles.has(id));
+					renderedWidth = width;
+					hits = rows.flatMap(({ text, focus }, row) => focus ? [{ row, to: visibleWidth(text), id: focus }] : []);
+					return rows.map(({ text }) => text);
+				},
+				// Pi routes mouse events only in fullscreen mode. Regular mode keeps terminal selection.
+				handleMouse(event) {
+					if (event.type !== "click" || event.button !== "left" || event.width !== renderedWidth) return undefined;
+					const hit = hits.find(({ row, to }) => row === event.y && event.x >= 0 && event.x < to);
+					if (!hit) return undefined;
+					focusWorker(hit.id);
+					return { handled: true, render: false };
+				},
 			};
 		});
 	};
@@ -491,6 +569,9 @@ export default function subagentExtension(pi: ExtensionAPI): void {
 		}
 		widgetItems.set(id, {
 			ref: directRef(display),
+			workflow: display.workflow,
+			worker: display.worker,
+			workers: display.workers,
 			role: roleBadge(display.role),
 			model,
 			thinkingLevel: thinkingLevel ?? "default",

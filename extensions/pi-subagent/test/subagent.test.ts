@@ -342,7 +342,7 @@ function harness(options: {
 } = {}) {
 	let tool: Tool | undefined;
 	const tools = new Map<string, Tool>();
-	let widget: { render: (width: number) => string[] } | undefined;
+	let widget: { render: (width: number) => string[]; handleMouse?: (event: any) => any } | undefined;
 	let messageRenderer: ((...args: any[]) => { render: (width: number) => string[] }) | undefined;
 	let renders = 0;
 	const notifications: Array<{ message: string; type: string }> = [];
@@ -580,6 +580,11 @@ function fakeHerdr(cwd: string, answer: (prompt: string) => string | undefined |
 				await waitGate;
 				await persist(args[2]!);
 				return response({ type: "agent_info", agent: agent(args[2]!, "done") });
+			}
+			if (args[0] === "agent" && (args[1] === "get" || args[1] === "focus")) {
+				const name = [...sessions].find(([, identity]) => identity.pane === args[2] && !closed.has(identity.pane))?.[0];
+				if (!name) return { code: 1, stdout: JSON.stringify({ error: { code: "agent_not_found" } }), stderr: "agent not found" };
+				return response({ type: "agent_info", agent: agent(name, "working") });
 			}
 			if (args[0] === "agent" && args[1] === "send-keys") return response({ type: "ok" });
 			throw new Error(`Unexpected Herdr call: ${args.join(" ")}`);
@@ -1045,15 +1050,15 @@ test("direct widget, follow-up and /subagent show the same saved reference, role
 			} });
 			app.handlers.get("session_start")?.({}, app.ctx);
 			await app.tool.execute("widget", { role: "worker", name: "Search audit", task: "inspect", access: "read" }, undefined, undefined, app.ctx);
-			assert.equal(app.widget?.render(120).length, 1);
-			assert.match(app.widget!.render(120)[0]!, /^⠋ D1\.1 \[W\] Search audit · .*\/.* · — tok · /);
+			assert.equal(app.widget?.render(120).length, 2);
+			assert.match(app.widget!.render(120)[1]!, /^└─ ⠋ D1\.1 \[W\] Search audit · .*\/.* · — tok · /);
 			let rows: string[] = [];
 			app.ctx.ui.select = async (_title: string, choices: string[]) => { rows = choices; return undefined; };
 			await app.commands.get("subagent")!.handler("", app.ctx);
 			assert.deepEqual(rows.filter((row) => row.startsWith("  ")), ["  ● D1.1 · worker · Search audit · observed locally"]);
 			release();
 			await waitFor(() => app.sentMessages.length === 1);
-			assert.match(app.widget!.render(120)[0]!, /✓ D1\.1 \[W\] complete · Search audit · .* · 1\.2k tok · \$0\.12 · /);
+			assert.match(app.widget!.render(120)[1]!, /^└─ ✓ D1\.1 \[W\] complete · Search audit · .* · 1\.2k tok · \$0\.12 · /);
 			const { details, content } = app.sentMessages[0]!.message;
 			assert.deepEqual([details.entries[0].tokens, details.entries[0].cost, details.cost], [1_240, 0.1234, 0.1234]);
 			assert.match(content, /Delegation completed · 1 completed · total \$0\.12\n.* · 1\.2k tok · \$0\.12 · /);
@@ -1073,17 +1078,89 @@ test("direct widget, follow-up and /subagent show the same saved reference, role
 			await app.commands.get("subagent")!.handler("", app.ctx);
 			assert.match(rows.find((row) => row.startsWith("  "))!, /^  ✓ D1\.1 · worker · Search audit · completed · \$0\.12/);
 			assert.match(notices.find((notice) => notice.includes("session"))!, /\n- \*\*cost:\*\* \\\$0\.12$/);
-			assert.match(app.widget!.render(220)[0]!, /last read 125ms recorded/);
+			assert.match(app.widget!.render(220)[1]!, /last read 125ms recorded/);
 			for (const width of [26, 12]) {
-				const [row] = app.widget!.render(width);
+				const [, row] = app.widget!.render(width);
 				assert.ok(visibleWidth(row!) <= width);
-				assert.match(row!, width === 26 ? /^✓ D1\.1 \[W\] complete · / : /^✓ D1\.1/, "reference precedes optional metrics");
+				assert.match(row!, width === 26 ? /^└─ ✓ D1\.1 \[W\] complete · / : /^└─ ✓ D1\.1/, "reference precedes optional metrics");
 			}
 			// A recovery result did not prove termination, so the workflow stays in the active view.
 			app.sessionEntries.push({ type: "custom_message", customType: "subagent-direct-result", content, details: { ...details, recovery: true }, display: true });
 			app.ctx.ui.select = async (_title: string, choices: string[]) => { rows = choices; return undefined; };
 			await app.commands.get("subagent")!.handler("", app.ctx);
 			assert.match(rows.find((row) => row.startsWith("  "))!, /^  ⚠ D1\.1 · worker · Search audit · needs attention: worker termination unproved/);
+		});
+	});
+});
+
+test("direct widget nests a multi-worker workflow under Main and a click focuses only a verified live worker", async () => {
+	await environment(async (agentDir) => {
+		await writeWorkerRole(agentDir);
+		await herdrEnvironment(async (cwd) => {
+			let release!: () => void;
+			const gate = new Promise<void>((resolve) => { release = resolve; });
+			const fake = fakeHerdr(cwd, () => "answer", gate);
+			let stolen = false;
+			const app = harness({ cwd, ui: true, herdr: async (args) => {
+				if (stolen && args[0] === "agent" && args[1] === "get") {
+					const shown = JSON.parse((await fake.exec(args)).stdout);
+					shown.result.agent.name = "other-agent";
+					return { code: 0, stdout: JSON.stringify(shown), stderr: "" };
+				}
+				return fake.exec(args);
+			} });
+			app.handlers.get("session_start")?.({}, app.ctx);
+			await app.tool.execute("tree", { tasks: [
+				{ role: "worker", name: "First", task: "first", access: "read" },
+				{ role: "worker", name: "Second", task: "second", access: "read" },
+			] }, undefined, undefined, app.ctx);
+			await waitFor(() => fake.calls.filter(([kind, command]) => kind === "agent" && command === "prompt").length === 2);
+			const rows = app.widget!.render(120);
+			assert.equal(rows[0], "Main · 2 working");
+			assert.match(rows[1]!, /^└─ ⠋ D1 · 2 workers$/);
+			assert.match(rows[2]!, /^   ├─ ⠋ D1\.1 \[W\] First · /);
+			assert.match(rows[3]!, /^   └─ ⠋ D1\.2 \[W\] Second · /);
+			const click = (y: number, x = 5, width = 120) => app.widget!.handleMouse!({ type: "click", button: "left", x, y, width });
+			assert.equal(click(0), undefined, "the header is not a target");
+			assert.equal(click(1), undefined, "a workflow row is not a target");
+			assert.equal(click(2, 5, 80), undefined, "a click for an older render width is ignored");
+			assert.deepEqual(click(3), { handled: true, render: false });
+			await waitFor(() => fake.calls.some(([kind, command]) => kind === "agent" && command === "focus"));
+			const pane = fake.calls.find(([kind, command]) => kind === "agent" && command === "focus")![2];
+			const get = fake.calls.findIndex(([kind, command, target]) => kind === "agent" && command === "get" && target === pane);
+			assert.ok(get >= 0 && get < fake.calls.findIndex(([kind, command]) => kind === "agent" && command === "focus"), "identity is checked before focus");
+			assert.notEqual(pane, "w-test:p1", "focus targets the worker pane, not Main");
+			stolen = true;
+			const focusCalls = () => fake.calls.filter(([kind, command]) => kind === "agent" && command === "focus").length;
+			assert.deepEqual(click(2), { handled: true, render: false });
+			await waitFor(() => app.notifications.some(({ message }) => message.startsWith("Cannot focus D1.1: Herdr agent identity")));
+			assert.equal(focusCalls(), 1, "a pane with another agent never receives focus");
+			stolen = false;
+			release();
+			await waitFor(() => app.sentMessages.length === 1);
+			const done = app.widget!.render(120);
+			assert.equal(done[0], "Main · 2 complete");
+			assert.equal(click(2), undefined, "a finished worker is not a target");
+		});
+	});
+});
+
+test("direct widget caps tree rows and keeps the omitted workers in a final count row", async () => {
+	await environment(async (agentDir) => {
+		await writeWorkerRole(agentDir);
+		await herdrEnvironment(async (cwd) => {
+			const fake = fakeHerdr(cwd);
+			const app = harness({ cwd, ui: true, herdr: fake.exec });
+			app.handlers.get("session_start")?.({}, app.ctx);
+			await app.tool.execute("many", { tasks: Array.from({ length: 8 }, (_, index) =>
+				({ role: "worker", name: `Task ${index + 1}`, task: `task ${index + 1}`, access: "read" })) }, undefined, undefined, app.ctx);
+			await waitFor(() => app.sentMessages.length === 1);
+			const rows = app.widget!.render(120);
+			assert.equal(rows[0], "Main · 8 complete");
+			assert.match(rows[1]!, /^├─ ✓ D1 · 8 workers$/);
+			rows.slice(2, 6).forEach((row, index) => assert.ok(row.startsWith(`│  ├─ ✓ D1.${index + 1} `), row));
+			assert.equal(rows[6], "└─ … 4 more · 4 complete");
+			assert.equal(rows.length, 7);
 		});
 	});
 });
@@ -1114,29 +1191,29 @@ test("direct widget shows pending tools and recorded time without losing identit
 			};
 			try {
 				await sample();
-				const pending = app.widget!.render(220)[0]!;
+				const pending = app.widget!.render(220)[1]!;
 				assert.match(pending, /pending re ad  , bash/);
 				assert.doesNotMatch(pending, /running|recorded|[\u0000-\u001f\u007f-\u009f]/);
 				entries.push({ type: "message", id: "result-b", message: { role: "toolResult", toolCallId: "b", durationMs: 2500 } });
 				await sample();
-				const completed = app.widget!.render(220)[0]!;
+				const completed = app.widget!.render(220)[1]!;
 				assert.match(completed, /pending re ad  .*last bash 2s recorded/);
 				assert.match(completed, /— tok · \d+s · pending/, "task elapsed time is separate from tool time");
-				const narrow = app.widget!.render(90)[0]!;
-				assert.match(narrow, /^\S D1\.1 \[W\] Search audit · .*\/.* · — tok · /);
+				const narrow = app.widget!.render(90)[1]!;
+				assert.match(narrow, /^└─ \S D1\.1 \[W\] Search audit · .*\/.* · — tok · /);
 				assert.doesNotMatch(narrow, /pending|recorded/, "activity is removed before existing metrics");
 				entries.push({ type: "message", id: "result-a", message: { role: "toolResult", toolCallId: "a" } });
 				await sample();
-				assert.doesNotMatch(app.widget!.render(220)[0]!, /pending|recorded/, "an untimed latest result does not keep an older time");
+				assert.doesNotMatch(app.widget!.render(220)[1]!, /pending|recorded/, "an untimed latest result does not keep an older time");
 				entries.push({ type: "message", id: "call-c", message: { role: "assistant", content: [{ type: "toolCall", id: "c", name: "read" }] } });
 				await sample();
-				assert.match(app.widget!.render(220)[0]!, /pending read/);
+				assert.match(app.widget!.render(220)[1]!, /pending read/);
 			} finally { release(); }
 			await waitFor(() => app.sentMessages.length === 1);
 			for (const width of [26, 12]) {
-				const row = app.widget!.render(width)[0]!;
+				const row = app.widget!.render(width)[1]!;
 				assert.ok(visibleWidth(row) <= width);
-				assert.match(row, width === 12 ? /^✗ D1\.1/ : /^✗ D1\.1 \[W\] failed · /);
+				assert.match(row, width === 12 ? /^└─ ✗ D1\.1/ : /^└─ ✗ D1\.1 \[W\] failed · /);
 				assert.doesNotMatch(row, /pending|recorded/);
 			}
 		});

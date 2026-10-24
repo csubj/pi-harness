@@ -56,6 +56,8 @@ export interface DirectHandle {
 	partialText(maxChars: number): Promise<string | undefined>;
 	/** Display-only activity from the last usage() sample. */
 	readonly activity?: DirectToolActivity;
+	/** Focus the worker pane after Herdr confirms the exact launched agent still owns it. */
+	focus(): Promise<void>;
 	cancel(): Promise<void>;
 }
 
@@ -486,6 +488,11 @@ export function createDirectHerdr(pi: Pick<ExtensionAPI, "exec">, cwd: string, i
 					}
 					if (current !== "done") throw new Error(`Herdr agent in tab ${tabId} became ${current}; inspect it before retrying.`);
 					return readAnswer();
+				},
+				async focus() {
+					// A reused pane ID must not receive focus: the agent identity must match the launch first.
+					inspect(await herdr.json(["agent", "get", paneId], options()), "agent_info", name, paneId, tabId);
+					await herdr.json(["agent", "focus", paneId], options());
 				},
 				async cancel() {
 					await herdr.json(["agent", "send-keys", name, "ctrl+c"], options());
