@@ -123,7 +123,7 @@ function normalizePaths(value: Static<typeof DelegationSchema>, path: string): s
 }
 
 /** Check the selector shape here. Admission and launch resolve it against the Pi working directory. */
-function normalizeRepo(value: string, path: string): string {
+export function normalizeRepo(value: string, path: string): string {
 	const normalized = text(value, path);
 	if (/[\u0000-\u001f\u007f-\u009f]/.test(normalized) || normalized.startsWith("/") || normalized.split(/[\\/]/).includes("..")) {
 		throw new Error(`${path} must be a relative path without control characters or .. components.`);

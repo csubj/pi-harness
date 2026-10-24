@@ -1173,6 +1173,8 @@ export class IsolatedRunner {
 		}, context));
 		const root = realpathSync.native(prepared.root);
 		if (root !== prepared.root) throw new Error("Preflight repository root must be canonical.");
+		// A Repository target is its own root. A different root means the checkout changed after the target check.
+		if (targeted && root !== canonicalCwd) throw new Error(`Repository target ${canonicalCwd} now resolves to ${root}; nothing was saved. Retry the request.`);
 		let fullSuite: AdmittedFullSuite | undefined;
 		if (request.tasks.some((task) => task.kind === "changeset")) {
 			// Main is clean and committed here, so the working files are the committed sources.
@@ -2078,6 +2080,15 @@ export class IsolatedRunner {
 		return { invalidIds, requests: states.map((handle) => ({
 			id: handle.state.request.id, name: handle.state.request.goal, status: inventoryStatus(handle.state, true),
 			directory: dirname(handle.path), root: handle.state.root, orphaned: true, tasks: [],
+		})) };
+	}
+
+	/** Orphaned requests of every primary checkout in one state scan, each with the primary checkout that owns it. */
+	async listAllOrphanRequests() {
+		const { states, invalidIds, primaries } = await this.store.listOrphans();
+		return { invalidIds, requests: states.map((handle) => ({
+			id: handle.state.request.id, name: handle.state.request.goal, status: inventoryStatus(handle.state, true),
+			directory: dirname(handle.path), root: handle.state.root, orphaned: true as const, tasks: [], primary: primaries.get(handle)!,
 		})) };
 	}
 

@@ -192,6 +192,7 @@ function response(method: string, continuation = false, state: RunState = PRIVAT
 function createHarness(options: {
 	runner?: IsolatedExtensionComponents["runner"];
 	resolveRoot?: IsolatedExtensionComponents["resolveRoot"];
+	allOrphans?: { requests: Array<Record<string, unknown> & { primary: string }>; invalidIds: string[] };
 	responseState?: RunState;
 	inventoryStates?: RunState[];
 	onCreate?: (options: Parameters<CreateIsolatedComponents>[0]) => void;
@@ -259,6 +260,7 @@ function createHarness(options: {
 			return "follow-up queued";
 		},
 		listOrphanRequests() { return { requests: [], invalidIds: [] }; },
+		listAllOrphanRequests() { return options.allOrphans ?? { requests: [], invalidIds: [] }; },
 		hasProductiveRunLease() { return false; },
 		listRequests(...args: unknown[]) {
 			runnerCalls.push({ method: "listRequests", args });
@@ -1666,14 +1668,18 @@ test("recovery tools accept repo, resolve the Repository target, and keep repo o
 	const child = join(parent, "team", "service");
 	await mkdir(child, { recursive: true });
 	execFileSync("git", ["init", "-q", child]);
-	const harness = createHarness();
+	const harness = createHarness({ resolveRoot: async (cwd) => cwd });
 	const abort = namedTool(harness, "subagent_abort");
-	assert.deepEqual(abort.prepareArguments({ id: "request-one", repo: "team/service" }), { id: "request-one", repo: "team/service" });
-	assert.throws(() => abort.prepareArguments({ id: "request-one", repo: "" }), /repo must be a non-empty relative path/);
+	// Recovery tools normalize repo like delegate_task, so both select the same Repository target.
+	assert.deepEqual(abort.prepareArguments({ id: "request-one", repo: " team/service " }), { id: "request-one", repo: "team/service" });
+	for (const repo of ["", "../x", "/abs"]) assert.throws(() => abort.prepareArguments({ id: "request-one", repo }), /repo must be/, repo);
 	await executeTool(abort, { id: "request-one", repo: "team/service" }, undefined, context(parent));
-	assert.equal(harness.rootCalls.at(-1)!.cwd, child);
-	assert.deepEqual(harness.runnerCalls.filter(({ method }) => method === "abort").at(-1)!.args.slice(0, 2), ["request-one", CANONICAL_ROOT]);
+	assert.deepEqual(harness.runnerCalls.filter(({ method }) => method === "abort").at(-1)!.args.slice(0, 2), ["request-one", child]);
 	await assert.rejects(executeTool(abort, { id: "request-one", repo: "team" }, undefined, context(parent)), /not in a Git repository/);
+	// A root that differs from the validated target is refused.
+	const moved = createHarness({ resolveRoot: async () => parent });
+	await assert.rejects(executeTool(namedTool(moved, "subagent_abort"), { id: "request-one", repo: "team/service" }, undefined, context(parent)), /Git now reports/);
+	assert.equal(moved.runnerCalls.some(({ method }) => method === "abort"), false);
 	const resume = namedTool(harness, "subagent_resume");
 	assert.deepEqual(resume.prepareArguments({ id: "request-one", action: "verify", taskId: "unit-one", repo: "team/service" }),
 		{ id: "request-one", action: "verify", taskId: "unit-one", repo: "team/service" });
@@ -1690,13 +1696,20 @@ test("inventory outside a Git repository lists the requests of each Repository t
 			if (cwd === parent) throw new Error("not a Git checkout");
 			return cwd;
 		},
+		allOrphans: { invalidIds: [], requests: [
+			{ id: "orphan", name: "Gone", status: "saved running · unverified", root: join(child, "..", "removed"), orphaned: true, tasks: [], primary: child },
+			{ id: "elsewhere", name: "Other", status: "aborted", root: "/gone", orphaned: true, tasks: [], primary: "/other/repo" },
+		] },
 	});
 	const inventory = await harness.surface.inventory(parent);
 	assert.equal(inventory.root, parent);
 	assert.deepEqual(harness.runnerCalls.filter(({ method }) => method === "listRequests").map(({ args }) => args[0]), [child]);
-	assert.ok(inventory.requests.length > 0);
-	for (const request of inventory.requests) assert.deepEqual([request.repo, request.leaseLive], ["team/service", false]);
+	assert.deepEqual(inventory.requests.map(({ id, repo, leaseLive, checkout }) => [id, repo, leaseLive, checkout]), [
+		["request-one", "team/service", false, child],
+		["orphan", "team/service", false, child],
+	]);
 	assert.deepEqual(inventory.invalidIds, ["team/service/damaged"]);
+	assert.deepEqual(inventory.warnings, []);
 	// A Git failure inside a repository is not a parent directory.
 	const failing = createHarness({ resolveRoot: async () => { throw new Error("git timed out"); } });
 	await assert.rejects(failing.surface.inventory(child), /git timed out/);

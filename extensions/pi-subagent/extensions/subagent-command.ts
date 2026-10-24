@@ -54,6 +54,8 @@ export interface IsolatedRequest {
 	repo?: string;
 	/** The productive lease state of this request's root, when the inventory spans several roots. */
 	leaseLive?: boolean;
+	/** A live checkout of the request's repository for Git commands, when the inventory spans several roots. */
+	checkout?: string;
 	orphaned?: boolean;
 	name: string;
 	status: string;
@@ -65,6 +67,8 @@ export interface IsolatedInventory {
 	leaseLive: boolean;
 	requests: readonly IsolatedRequest[];
 	invalidIds: readonly string[];
+	/** Incomplete inventory evidence, such as discovery issues or truncation. */
+	warnings?: readonly string[];
 }
 
 export type { PruneItem };
@@ -562,6 +566,7 @@ export function registerSubagentCommand(pi: ExtensionAPI, adapter: SubagentComma
 				if (report) deliver(ctx, workingReport(direct, inventory));
 				report = false;
 				if (unavailable) ctx.ui.notify(`Isolated inventory unavailable (${unavailable}). Direct branch recovery remains available; check the canonical Git checkout/configuration.`, "warning");
+				for (const warning of inventory?.warnings ?? []) ctx.ui.notify(warning, "warning");
 				if (inventory?.invalidIds.length) for (const id of inventory.invalidIds) ctx.ui.notify(`Unreadable isolated state ID: ${JSON.stringify(id)}. Preserve this file; inspect the state store before making changes.`, "warning");
 				type Selection = { kind: "direct"; task: DirectTask } | { kind: "isolated"; request: IsolatedRequest; root: string } | { kind: "refresh" } | { kind: "history" } | { kind: "many" } | { kind: "close" };
 				// A header row selects Refresh; rows sort by status priority within their group.

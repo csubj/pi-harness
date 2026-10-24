@@ -383,3 +383,12 @@ test("preflight passes a Repository target flag to the host gate", async (t) => 
 	await fixture.runtime.preflight({ request: changeset, cwd: fixture.root }, operationContext());
 	assert.deepEqual(fixture.hostTargets, [true, undefined]);
 });
+
+test("targeted preflight fails before the host gate when Git reports another root", async (t) => {
+	const fixture = await harness(t);
+	await fixture.setRole("author.md", { name: "change author" });
+	fixture.setResolvedRoot(await realpath(join(fixture.root, "..")));
+	await assert.rejects(fixture.runtime.preflight({ request: request([changesetTask("task-a", "change author", "fast")]), cwd: fixture.root, targeted: true }, operationContext()),
+		/now resolves to .*nothing was saved/);
+	assert.deepEqual(fixture.hostTargets, []);
+});

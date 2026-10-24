@@ -195,6 +195,8 @@ export class RoleLaunchRuntime implements CoordinatorRuntime {
 		}
 		const root = await realpath(resolvedRoot);
 		if (root !== resolvedRoot) throw new Error("Pi Subagent root resolver returned a non-canonical path.");
+		// A Repository target must still be its own Git top-level directory before the host gate runs.
+		if (input.targeted && root !== await realpath(input.cwd)) throw new Error(`Repository target ${input.cwd} now resolves to ${root}; nothing was saved. Retry the request.`);
 		const rootInfo = await lstat(root);
 		if (!rootInfo.isDirectory()) throw new Error("Pi Subagent root must be an existing local directory.");
 		context.signal?.throwIfAborted();

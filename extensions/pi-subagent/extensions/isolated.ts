@@ -1,8 +1,8 @@
-import { basename } from "node:path";
+import { basename, relative, sep } from "node:path";
 import type { JsonValue } from "@earendil-works/pi-ai";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { truncateToWidth } from "@earendil-works/pi-tui";
-import { discoverRepos, gitTopLevel, resolveRepoTarget } from "@hcflabs/pi-repo";
+import { discoverRepos, gitTopLevel, isWithin, resolveRepoTarget, type RepoDiscovery } from "@hcflabs/pi-repo";
 import { Type, type TObject, type TProperties } from "typebox";
 import { capEphemeralSubagentOutput, utf8Prefix, type EphemeralSubagentExecutor } from "../dist/ephemeral.js";
 import {
@@ -45,6 +45,7 @@ import { FileRunStore } from "../dist/store.js";
 import { workerOutputForMain } from "./result-transport.ts";
 import type { CleanupReport, IsolatedInventory, IsolatedRequest, PrunePlan } from "./subagent-command.ts";
 import type { DiscardPlan } from "../dist/discard.js";
+import { normalizeRepo } from "./workflow.ts";
 
 const LOOKUP_ROOT_TIMEOUT_MS = 5_000;
 const PUBLIC_EVIDENCE_MAX_BYTES = 512;
@@ -539,8 +540,9 @@ function parseWithRepo<T extends object>(parse: (value: unknown) => T): (value: 
 	return (value) => {
 		if (!value || typeof value !== "object" || Array.isArray(value) || !Object.hasOwn(value, "repo")) return parse(value);
 		const { repo, ...rest } = value as Record<string, unknown>;
-		if (typeof repo !== "string" || !repo.trim() || repo.includes("\0")) throw new Error("repo must be a non-empty relative path.");
-		return { ...parse(rest), repo };
+		if (typeof repo !== "string") throw new Error("repo must be a relative path.");
+		// Normalize like delegate_task, so a recovery call selects the same Repository target.
+		return { ...parse(rest), repo: normalizeRepo(repo, "repo") };
 	};
 }
 
@@ -618,8 +620,12 @@ export function registerIsolatedExtension(pi: ExtensionAPI, options: RegisterIso
 			timeoutMs: LOOKUP_ROOT_TIMEOUT_MS,
 			deadline: startedAt + LOOKUP_ROOT_TIMEOUT_MS,
 		};
-		const target = repo === undefined ? cwd : (await resolveRepoTarget(cwd, repo, { signal: context.signal, timeoutMs: LOOKUP_ROOT_TIMEOUT_MS })).root;
-		return await getComponents().resolveRoot(target, context);
+		if (repo === undefined) return await getComponents().resolveRoot(cwd, context);
+		const target = (await resolveRepoTarget(cwd, repo, { signal: context.signal, timeoutMs: LOOKUP_ROOT_TIMEOUT_MS })).root;
+		const root = await getComponents().resolveRoot(target, context);
+		// The checkout can change between two Git probes. Use only the root that the target validation proved.
+		if (root !== target) throw new Error(`Repository target ${repo} resolved to ${target}, but Git now reports ${root}. Nothing was changed; retry.`);
+		return root;
 	};
 
 	pi.on("session_start", (_event, ctx) => {
@@ -895,19 +901,35 @@ export function registerIsolatedExtension(pi: ExtensionAPI, options: RegisterIso
 		];
 		return lines;
 	};
+	/** Report lines for discovery issues and truncation, because an incomplete search cannot prove absence. */
+	const discoveryWarnings = (found: RepoDiscovery): string[] => [
+		...(found.truncated ? [`Repository discovery below ${found.base} stopped at a limit; some repositories were not examined.`] : []),
+		...found.issues.slice(0, 20).map(({ path, reason }) => `Repository discovery could not examine ${path}: ${boundedPublicText(reason)}`),
+		...(found.issues.length > 20 ? [`${found.issues.length - 20} more repository discovery issues omitted.`] : []),
+	];
 	/** Read-only inventory across the Repository targets below a parent directory that is not a Git repository. */
-	const childInventory = async (cwd: string): Promise<IsolatedInventory> => {
+	const childInventory = async (cwd: string, current: () => boolean = () => true): Promise<IsolatedInventory> => {
 		const found = await discoverRepos(cwd);
 		const requests: IsolatedRequest[] = [];
 		const invalidIds: string[] = [];
+		const selectorOf = (root: string) => found.repos.find((item) => item.root === root)?.repo
+			?? (isWithin(found.base, root) ? relative(found.base, root).split(sep).join("/") : root);
 		for (const { repo, root } of found.repos) {
+			if (!current()) throw new Error("Session or branch changed; reopen /subagent.");
 			const listed = await getComponents().runner.listRequests(root);
-			const orphans = await getComponents().runner.listOrphanRequests(root);
 			const leaseLive = await getComponents().runner.hasProductiveRunLease(root);
-			for (const request of [...listed.requests, ...orphans.requests]) requests.push({ ...request, root: request.root ?? root, repo, leaseLive });
-			invalidIds.push(...[...listed.invalidIds, ...orphans.invalidIds].map((id) => `${repo}/${id}`));
+			for (const request of listed.requests) requests.push({ ...request, root: request.root ?? root, repo, leaseLive, checkout: root });
+			invalidIds.push(...listed.invalidIds.map((id) => `${repo}/${id}`));
 		}
-		return { root: found.base, leaseLive: requests.some((request) => request.leaseLive), requests, invalidIds: [...new Set(invalidIds)] };
+		// One scan of the whole state store. An orphan's primary checkout is live, so Git commands run there.
+		const orphans = await getComponents().runner.listAllOrphanRequests();
+		for (const { primary, ...request } of orphans.requests) {
+			if (!isWithin(found.base, primary)) continue;
+			requests.push({ ...request, repo: selectorOf(primary), leaseLive: false, checkout: primary });
+		}
+		invalidIds.push(...orphans.invalidIds);
+		return { root: found.base, leaseLive: requests.some((request) => request.leaseLive), requests,
+			invalidIds: [...new Set(invalidIds)], warnings: discoveryWarnings(found) };
 	};
 	return {
 		async inventory(cwd, current) {
@@ -918,7 +940,7 @@ export function registerIsolatedExtension(pi: ExtensionAPI, options: RegisterIso
 				// Outside a Git repository, list the requests of each Repository target below cwd.
 				// Any other failure, such as a Git timeout, stays a failure.
 				if (await gitTopLevel(cwd).then((top) => top !== undefined, () => true)) throw error;
-				return await childInventory(cwd);
+				return await childInventory(cwd, current);
 			}
 			const revision = savedRevision;
 			const { requests, invalidIds, states } = await getComponents().runner.listRequests(root);
@@ -949,22 +971,29 @@ export function registerIsolatedExtension(pi: ExtensionAPI, options: RegisterIso
 					if (!listed.requests.length && !listed.invalidIds.length) continue;
 					lines.push(`repo ${repo}:`, ...await recoveryLines(child));
 				}
-				if (!lines.length) lines.push(`No isolated requests in the ${found.repos.length} repositories below ${found.base}.`);
+				const warnings = discoveryWarnings(found);
+				// An incomplete discovery is not proof that no request exists.
+				if (!lines.length) lines.push(warnings.length ? `No isolated requests in the ${found.repos.length} repositories that discovery examined below ${found.base}.`
+					: `No isolated requests in the ${found.repos.length} repositories below ${found.base}.`);
+				lines.push(...warnings);
 				return boundedReport(lines, "recovery report lines omitted; use subagent_status for exact request evidence.");
 			}
 			return boundedReport(await recoveryLines(root), "recovery report lines omitted; use subagent_status for exact request evidence.");
 		},
 		async discardPlan(cwd, request) {
-			// A request listed from a parent directory runs Git in its own Repository target.
-			if (request.repo !== undefined && request.root) cwd = request.root;
-			return await getComponents().runner.discardPlan(cwd, request.id, request.directory, {
+			// A request listed from a parent directory runs Git in a live checkout of its own repository.
+			if (request.checkout !== undefined) cwd = request.checkout;
+			const plan = await getComponents().runner.discardPlan(cwd, request.id, request.directory, {
 				panes: () => listHerdrPanes(cwd), current: () => !sessionClosed,
 				blocked: async () => jobOwners.has(`${request.root}\0${request.id}`) ? "A local job is active for this request." : undefined,
 			});
+			return request.checkout === undefined ? plan : { ...plan, checkout: request.checkout };
 		},
 		async discard(cwd, plan, current) {
 			requireCurrent(current);
-			if (await gitTopLevel(cwd).then((top) => top === undefined, () => false)) cwd = plan.root;
+			// The plan keeps the live checkout that it used. The saved request root can be removed.
+			const checkout = (plan as DiscardPlan & { checkout?: string }).checkout;
+			if (checkout !== undefined) cwd = checkout;
 			const removals = await getComponents().runner.discard(cwd, plan, {
 				panes: () => listHerdrPanes(cwd), current: () => current() && !sessionClosed,
 				blocked: async () => jobOwners.has(`${plan.root}\0${plan.requestId}`) ? "A local job is active for this request." : undefined,
