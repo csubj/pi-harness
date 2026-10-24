@@ -1,6 +1,6 @@
 {
   "name": "@hcflabs/pi-prompt-creator",
-  "version": "3.2.5",
+  "version": "3.2.6",
   "description": "Turn current Pi conversation signals into user-approved prompt templates.",
   "keywords": [
     "pi-package",
@@ -46,7 +46,7 @@
   },
   "dependencies": {
     "@hcflabs/pi-config-store": "^4.0.0",
-    "@hcflabs/pi-subagent": "^22.0.0 || ^23.0.0 || ^24.0.0 || ^25.0.0 || ^26.0.0 || ^27.0.0",
+    "@hcflabs/pi-subagent": "^22.0.0 || ^23.0.0 || ^24.0.0 || ^25.0.0 || ^26.0.0 || ^27.0.0 || ^28.0.0",
     "@hcflabs/pi-task-models": "^9.0.0"
   },
   "devDependencies": {

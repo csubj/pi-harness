@@ -84,6 +84,7 @@ function state(requestValue: ExecuteRequest): RunState {
 	return {
 		version: RUN_STATE_VERSION,
 		request: requestValue,
+		...(requestValue.tasks.some((task) => task.kind === "changeset") ? { fullSuite: { check: requestValue.finalChecks[0]!, source: { kind: "config" as const } } } : {}),
 		policy: {
 			maxSubagents: 5,
 			maxTurns: 50,
@@ -211,6 +212,7 @@ function retainedChangesetState(): RunState {
 	return {
 		version: RUN_STATE_VERSION,
 		request: definition,
+		fullSuite: { check: definition.finalChecks[0]!, source: { kind: "config" } },
 		policy: {
 			maxSubagents: 5,
 			maxTurns: 50,
@@ -402,14 +404,14 @@ test("prompt evidence requires exact bounded follow-up and correction instructio
 	assert.throws(() => parseRunState(repeatedCorrection), /repeated correction history/);
 });
 
-test("v5 rejects completion without Main-owned promotion and obsolete per-task evidence", () => {
+test("v6 rejects completion without Main-owned promotion and obsolete per-task evidence", () => {
 	const completed = retainedChangesetState();
 	retainedChangesetTask(completed).status = "completed";
 	assert.throws(() => parseRunState(completed), /lacks a promoted Main-owned integration generation/);
 	const legacy = retainedChangesetState();
 	const attempt = retainedChangesetAttempt(legacy) as object as Record<string, unknown>;
 	attempt.integration = { status: "integrated" };
-	assert.throws(() => parseRunState(legacy), /Unsupported or malformed pi-subagent v5 state/);
+	assert.throws(() => parseRunState(legacy), /Unsupported or malformed pi-subagent v6 state/);
 	const unprovedRelease = retainedChangesetState();
 	retainedChangesetTask(unprovedRelease).status = "rejected";
 	retainedChangesetAttempt(unprovedRelease).termination = {
@@ -420,7 +422,7 @@ test("v5 rejects completion without Main-owned promotion and obsolete per-task e
 	assert.throws(() => parseRunState(unprovedRelease), /lost its exact worker accounting/);
 });
 
-test("v5 state maps text task attempts exactly and rejects v4 and launch state", () => {
+test("v6 state maps text task attempts exactly and rejects v4 and launch state", () => {
 	const definition = parseExecuteRequest(request([
 		textTask("research"),
 		changesetTask("change", { contextFrom: ["research"] }),
@@ -499,17 +501,17 @@ test("v5 state maps text task attempts exactly and rejects v4 and launch state",
 
 	const oldTaskField = structuredClone(valid) as RunState & { tasks: Array<Record<string, unknown>> };
 	oldTaskField.tasks[1]!.implementerLaunchKey = "implementer/balanced";
-	assert.throws(() => parseRunState(oldTaskField), /Unsupported or malformed pi-subagent v5 state/);
+	assert.throws(() => parseRunState(oldTaskField), /Unsupported or malformed pi-subagent v6 state/);
 
 	const oldLaunchState = { ...structuredClone(valid), launchRecords: {} };
-	assert.throws(() => parseRunState(oldLaunchState), /Unsupported or malformed pi-subagent v5 state/);
+	assert.throws(() => parseRunState(oldLaunchState), /Unsupported or malformed pi-subagent v6 state/);
 
 	const v4 = { ...structuredClone(valid), version: 4 };
-	assert.throws(() => parseRunState(v4), /Unsupported pi-subagent state version 4; expected 5/);
+	assert.throws(() => parseRunState(v4), /Unsupported pi-subagent state version 4; expected 6/);
 	const v2 = { ...structuredClone(valid), version: 2 };
-	assert.throws(() => parseRunState(v2), /Unsupported pi-subagent state version 2; expected 5/);
+	assert.throws(() => parseRunState(v2), /Unsupported pi-subagent state version 2; expected 6/);
 	const v1 = { ...structuredClone(valid), version: 1, launchRecords: {} };
-	assert.throws(() => parseRunState(v1), /Unsupported pi-subagent state version 1; expected 5/);
+	assert.throws(() => parseRunState(v1), /Unsupported pi-subagent state version 1; expected 6/);
 });
 
 test("state bounds multibyte text task runtime fields by UTF-8 bytes", () => {

@@ -1,7 +1,8 @@
-import { readFileSync, realpathSync } from "node:fs";
+import { realpathSync } from "node:fs";
 import { dirname } from "node:path";
 import { inspectDiscard, primaryCheckout, removeDiscardResources, type DiscardGuards, type DiscardPlan, type DiscardResource } from "./discard.ts";
 import { utf8Prefix, type EphemeralSubagentExecutor } from "./ephemeral.ts";
+import { assertFullSuiteSource, configuredSuiteFor, resolveFullSuite, sameCheck } from "./full-suite.ts";
 import { createChildWorktree, finalizeChildWorktree, inspectWorktreeDirty, type WorktreeInfo } from "./worktree.ts";
 import type { PruneOwnership, PruneRequest } from "./prune.ts";
 import { runGit } from "./git-process.ts";
@@ -26,6 +27,7 @@ import {
 	stagedCheckSources,
 	RUN_STATE_VERSION,
 	TERMINAL_RUN_STATUSES,
+	type AdmittedFullSuite,
 	type AllocationIntent,
 	type AllocationKind,
 	type CheckBatchEvidence,
@@ -68,19 +70,8 @@ export const CLEANUP_SAFETY_BUDGET_MS = 30_000;
 export const TERMINATION_SAFETY_BUDGET_MS = 15_000;
 export const STATUS_INSPECTION_BUDGET_MS = 5_000;
 const ALLOCATION_KINDS: readonly AllocationKind[] = ["worktree", "workspace", "worker_tab", "agent"];
-const FULL_SUITE: CheckCommand = { command: "pnpm", args: ["test"] };
 const MAX_RETAINED_INTEGRATION_GENERATIONS = 2;
-
-function requireRootSuite(root: string): string {
-	let manifest: unknown;
-	try { manifest = JSON.parse(readFileSync(`${root}/package.json`, "utf8")); }
-	catch { throw new Error("Canonical root package.json with a test script is required for isolated changesets."); }
-	if (!manifest || typeof manifest !== "object" || !('scripts' in manifest)
-		|| !manifest.scripts || typeof manifest.scripts !== "object"
-		|| !('test' in manifest.scripts) || typeof manifest.scripts.test !== "string"
-		|| !manifest.scripts.test.trim()) throw new Error("Canonical root test script is missing.");
-	return manifest.scripts.test;
-}
+const MAX_FINAL_CHECKS = 32;
 
 export interface OperationContext {
 	readonly signal: AbortSignal;
@@ -151,6 +142,8 @@ export type ResolvedRoute = Pick<VerifiedLaunch, "role" | "modelClass" | "model"
 /** A dry-run result: the normalized request and the resolved routes; no state exists for it. */
 export interface ExecutePlan {
 	request: ExecuteRequest;
+	/** The Full suite for a request with changeset tasks. */
+	fullSuite?: AdmittedFullSuite;
 	root: string;
 	main: WorkspaceIdentity;
 	routes: readonly ResolvedRoute[];
@@ -942,6 +935,8 @@ export class IsolatedRunner {
 	private readonly integrationGit: IntegrationGit;
 	private readonly textExecutor: EphemeralSubagentExecutor;
 	private readonly currentPolicy: () => ExecutionPolicySnapshot;
+	/** The configured `repoSuites`, read at admission only. */
+	private readonly repoSuites: () => Readonly<Record<string, CheckCommand>>;
 	private readonly productiveLifecycles = new Map<string, ProductiveLifecycle>();
 	private readonly followupControls = new Map<string, { task: ChangesetTaskState; control: FollowupControl }>();
 
@@ -957,7 +952,9 @@ export class IsolatedRunner {
 		},
 		currentPolicy: () => ExecutionPolicySnapshot = () => policy,
 		integrationGit = new IntegrationGit(),
+		repoSuites: () => Readonly<Record<string, CheckCommand>> = () => ({}),
 	) {
+		this.repoSuites = repoSuites;
 		this.coordinatorRuntime = coordinatorRuntime;
 		this.hostRuntime = hostRuntime;
 		this.gitRuntime = gitRuntime;
@@ -1171,11 +1168,17 @@ export class IsolatedRunner {
 		const prepared = await scope.call(async (context) => await this.coordinatorRuntime.preflight({ request, cwd: canonicalCwd, ...(dryRun ? { dryRun } : {}) }, context));
 		const root = realpathSync.native(prepared.root);
 		if (root !== prepared.root) throw new Error("Preflight repository root must be canonical.");
+		let fullSuite: AdmittedFullSuite | undefined;
 		if (request.tasks.some((task) => task.kind === "changeset")) {
-			requireRootSuite(root);
-			if (!request.finalChecks.some((check) => check.command === FULL_SUITE.command
-				&& check.args.length === 1 && check.args[0] === FULL_SUITE.args[0])) {
-				request.finalChecks = [FULL_SUITE, ...request.finalChecks];
+			// Main is clean and committed here, so the working files are the committed sources.
+			const repoSuites = this.repoSuites();
+			const configured = Object.keys(repoSuites).length ? configuredSuiteFor(repoSuites, await primaryCheckout(root)) : undefined;
+			fullSuite = resolveFullSuite(root, configured);
+			if (!request.finalChecks.some((check) => sameCheck(check, fullSuite!.check))) {
+				if (request.finalChecks.length >= MAX_FINAL_CHECKS) {
+					throw new Error(`The Full suite ${formatCheckCommand(fullSuite.check)} cannot be added: the request already has ${MAX_FINAL_CHECKS} final checks.`);
+				}
+				request.finalChecks = [fullSuite.check, ...request.finalChecks];
 			}
 		}
 		const preparedMain = runtimeIdentity(prepared.main, "Preflight Main identity");
@@ -1183,24 +1186,25 @@ export class IsolatedRunner {
 		if (this.hasAnyActiveControl(root)) {
 			throw new Error("Another Pi Subagent request has active changeset work in this repository.");
 		}
-		return { request, policy, root, preparedMain, routes: prepared.routes ?? [] };
+		return { request, policy, root, preparedMain, routes: prepared.routes ?? [], ...(fullSuite ? { fullSuite } : {}) };
 	}
 
 	/** Dry run of execute: no state, lock, lease, worktree, or Herdr call. */
 	async plan(value: unknown, cwd: string, outerSignal?: AbortSignal): Promise<ExecutePlan> {
-		const { request, root, preparedMain, routes } = await this.admitExecute(value, cwd, new ProductiveScope(outerSignal), true);
-		return { request, root, main: preparedMain, routes };
+		const { request, root, preparedMain, routes, fullSuite } = await this.admitExecute(value, cwd, new ProductiveScope(outerSignal), true);
+		return { request, root, main: preparedMain, routes, ...(fullSuite ? { fullSuite } : {}) };
 	}
 
 	async execute(value: unknown, cwd: string, outerSignal?: AbortSignal): Promise<RunResponse> {
 		const scope = new ProductiveScope(outerSignal);
-		const { request, policy, root, preparedMain } = await this.admitExecute(value, cwd, scope, false);
+		const { request, policy, root, preparedMain, fullSuite } = await this.admitExecute(value, cwd, scope, false);
 		return await this.withProductiveRun(root, async (lifecycle) => {
 			const createdAt = this.coordinatorRuntime.now();
 			const state: RunState = {
 				version: RUN_STATE_VERSION,
 				request,
 				policy,
+				...(fullSuite ? { fullSuite } : {}),
 				correctionCount: 0,
 				root,
 				requestStartMain: preparedMain,
@@ -1778,11 +1782,12 @@ export class IsolatedRunner {
 				generation.status = "validating";
 				await this.saveProductive(handle); // Record the exact validation intent before running checks.
 				try {
-					if (!request.finalChecks.some((check) => check.command === FULL_SUITE.command
-						&& check.args.length === 1 && check.args[0] === FULL_SUITE.args[0])) throw new Error("Canonical full-suite command was not recorded at admission.");
-					if (requireRootSuite(generation.worktree.path) !== requireRootSuite(root)) {
-						throw new Error("Combined tip changed the admitted canonical root test script.");
+					const fullSuite = state.fullSuite;
+					if (!fullSuite || !request.finalChecks.some((check) => sameCheck(check, fullSuite.check))) {
+						throw new Error("The Full suite was not recorded at admission.");
 					}
+					// The saved suite runs as admitted. A later config edit does not change it.
+					assertFullSuiteSource(fullSuite, generation.worktree.path);
 					await this.requireExactIntegration(handle, generation, receipts, scope);
 					const sources = stagedCheckSources(generation, state.integration.candidates);
 					const checks = await this.runCheckBatch(handle, request.finalChecks, action.expectedTip,

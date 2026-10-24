@@ -16,6 +16,7 @@ import { inspectPruneCandidates, listHerdrPanes, removePruneCandidates, type Pru
 import { runProcess as directRunProcess } from "../dist/process.js";
 import { RoleLaunchRuntime, type LaunchRuntimeOptions } from "../dist/launch-runtime.js";
 import { IsolatedRunner, nextIntegrationAction, type ExecutePlan, type OperationContext, type RunResponse } from "../dist/runner.js";
+import { describeFullSuite } from "../dist/full-suite.js";
 import {
 	IdOnlySchema,
 	ResumeRequestParameters,
@@ -29,6 +30,7 @@ import {
 	sameIdentity,
 	StatusOutputSchema,
 	type CheckBatchEvidence,
+	type CheckCommand,
 	type ExecuteRequest,
 	type ExecutionPolicySnapshot,
 	type ModelClass,
@@ -61,12 +63,14 @@ export type CreateIsolatedComponents = (options: {
 	executor: EphemeralSubagentExecutor;
 	policy: ExecutionPolicySnapshot;
 	currentPolicy(): ExecutionPolicySnapshot;
+	/** The configured Full suite overrides. Admission reads them after the policy check. */
+	repoSuites?(): Readonly<Record<string, CheckCommand>>;
 	onStateSaved(state: RunState): void;
 }) => IsolatedExtensionComponents;
 
 /** Construct the checked runtime while reusing the unified productive-assignment executor. */
 export const createIsolatedComponents: CreateIsolatedComponents = ({
-	pi, context, executor, policy, currentPolicy, onStateSaved,
+	pi, context, executor, policy, currentPolicy, repoSuites, onStateSaved,
 }) => {
 	const runProcess: DirectProcessRunner = async (command, args, options) => options.stdin === undefined
 		? await pi.exec(command, args, { cwd: options.cwd, signal: options.signal, timeout: options.timeoutMs })
@@ -96,6 +100,8 @@ export const createIsolatedComponents: CreateIsolatedComponents = ({
 			executor,
 			policy,
 			currentPolicy,
+			undefined,
+			repoSuites,
 		),
 	};
 };
@@ -473,7 +479,8 @@ function toolResult(response: RunResponse, ctx: ExtensionContext, rowsByRequest:
 }
 
 /** Bounded dry-run plan; a route missing from the coordinator report shows as unresolved. */
-export function formatExecutePlan({ request, root, main, routes }: ExecutePlan, hostChecked: boolean): { content: [{ type: "text"; text: string }]; details: unknown } {
+export function formatExecutePlan(plan: ExecutePlan, hostChecked: boolean): { content: [{ type: "text"; text: string }]; details: unknown } {
+	const { request, root, main, routes } = plan;
 	const route = (role: string, modelClass: ModelClass) => {
 		const found = routes.find((candidate) => candidate.role === role && candidate.modelClass === modelClass);
 		return found ? { model: found.model, thinkingLevel: found.thinkingLevel } : undefined;
@@ -495,6 +502,7 @@ export function formatExecutePlan({ request, root, main, routes }: ExecutePlan, 
 			...(task.kind === "changeset" ? [`   checks: ${task.checks.map(formatCheckCommand).join("; ")}`,
 				...(task.judgment ? [`   judgment: ${label(task.judgment.role, task.judgment.modelClass)}`] : [])] : []),
 		].join("\n")),
+		...(plan.fullSuite ? [`Full suite: ${describeFullSuite(plan.fullSuite)}`] : []),
 		`Final checks: ${request.finalChecks.map(formatCheckCommand).join("; ") || "none"}`,
 		...(request.finalJudgment ? [`Final judgment: ${label(request.finalJudgment.role, request.finalJudgment.modelClass)}`] : []),
 		...notChecked.map((reason) => `Not checked: ${reason}.`),
@@ -507,6 +515,7 @@ export function formatExecutePlan({ request, root, main, routes }: ExecutePlan, 
 				...route(task.role, task.modelClass), dependsOn: task.dependsOn, contextFrom: task.contextFrom,
 				...(task.kind === "changeset" ? { checks: task.checks, ...(task.judgment ? { judgment: { ...task.judgment, ...route(task.judgment.role, task.judgment.modelClass) } } : {}) } : {}) })),
 			finalChecks: request.finalChecks,
+			...(plan.fullSuite ? { fullSuite: plan.fullSuite } : {}),
 			...(request.finalJudgment ? { finalJudgment: { ...request.finalJudgment, ...route(request.finalJudgment.role, request.finalJudgment.modelClass) } } : {}),
 			notChecked,
 		},
@@ -533,6 +542,8 @@ export interface RegisterIsolatedOptions {
 	executor: EphemeralSubagentExecutor;
 	policy: ExecutionPolicySnapshot;
 	currentPolicy(): ExecutionPolicySnapshot;
+	/** The configured Full suite overrides for isolated changesets. */
+	repoSuites?(): Readonly<Record<string, CheckCommand>>;
 	/** Report new config issues, and throw when the config now blocks delegation, before each deferred Role launch. */
 	beforeRoleLaunch?(ctx: ExtensionContext): void;
 	componentsFactory?: CreateIsolatedComponents;
@@ -566,6 +577,7 @@ export function registerIsolatedExtension(pi: ExtensionAPI, options: RegisterIso
 		executor: options.executor,
 		policy: options.policy,
 		currentPolicy: options.currentPolicy,
+		...(options.repoSuites ? { repoSuites: options.repoSuites } : {}),
 		onStateSaved: (state) => {
 			savedRevision += 1;
 			for (const listener of stateListeners) listener(state);

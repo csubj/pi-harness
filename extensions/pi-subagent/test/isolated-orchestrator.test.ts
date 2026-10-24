@@ -71,8 +71,9 @@ const EXECUTE_REQUEST: ExecuteRequest = {
 };
 
 const PRIVATE_STATE = {
-	version: 5,
+	version: 6,
 	request: EXECUTE_REQUEST,
+	fullSuite: { check: { command: "pnpm", args: ["typecheck"] }, source: { kind: "config" } },
 	root: CANONICAL_ROOT,
 	main: RECORDED_MAIN,
 	status: "needs_attention",
@@ -328,7 +329,7 @@ async function executeTool(
 
 function expectedPublicState() {
 	return {
-		version: 5,
+		version: 6,
 		id: "request-one",
 		status: "needs_attention",
 		accepted: false,

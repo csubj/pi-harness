@@ -334,6 +334,44 @@ const roleDefaultsField: FieldParser<RoleDefaults> = (raw, report) => {
 	return defaults;
 };
 
+const MAX_REPO_SUITES = 200;
+const MAX_SUITE_ARGS = 128;
+const MAX_SUITE_TEXT = 16_000;
+
+/** A configured Full suite: one executable and its argument list. No shell runs unless the executable is a shell. */
+export interface RepoSuite {
+	command: string;
+	args: string[];
+}
+
+/**
+ * Strict `repoSuites`: any bad entry makes the whole value invalid, and the field disables delegation.
+ * Dropping one bad entry could select a different Full suite without notice.
+ */
+export function parseRepoSuites(raw: unknown): Record<string, RepoSuite> {
+	if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new Error("must be a JSON object keyed by absolute primary checkout paths");
+	const entries = Object.entries(raw);
+	if (entries.length > MAX_REPO_SUITES) throw new Error(`has ${entries.length} entries; the limit is ${MAX_REPO_SUITES}`);
+	const suites: Record<string, RepoSuite> = {};
+	for (const [key, value] of entries) {
+		const label = JSON.stringify(key);
+		if (!isAbsolute(key) || key.length > 4096 || /[\u0000-\u001f\u007f]/.test(key)) throw new Error(`key ${label} must be an absolute path without control characters`);
+		if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error(`${label} must be an object with command and args`);
+		for (const field of Object.keys(value)) {
+			if (field !== "command" && field !== "args") throw new Error(`${label} has unknown key ${JSON.stringify(field)}; expected command and args`);
+		}
+		const { command, args } = value as { command?: unknown; args?: unknown };
+		if (typeof command !== "string" || !command.trim() || command !== command.trim() || command.length > MAX_SUITE_TEXT || /[\u0000-\u001f\u007f]/.test(command)) {
+			throw new Error(`${label}.command must be one executable name or path without spaces at the ends or control characters`);
+		}
+		if (!Array.isArray(args) || args.length > MAX_SUITE_ARGS || args.some((arg) => typeof arg !== "string" || arg.length > MAX_SUITE_TEXT || arg.includes("\0"))) {
+			throw new Error(`${label}.args must be a list of at most ${MAX_SUITE_ARGS} strings without NUL`);
+		}
+		suites[key] = { command, args: [...args] as string[] };
+	}
+	return suites;
+}
+
 export interface SubagentConfig {
 	maxSubagents: number;
 	maxTurns: number;
@@ -341,6 +379,8 @@ export interface SubagentConfig {
 	maxCorrections: number;
 	timeout: { idleMinutes: number; maxMinutes: number };
 	roleDefaults: RoleDefaults;
+	/** Full suite overrides for isolated changesets, keyed by absolute primary checkout path. */
+	repoSuites: Record<string, RepoSuite>;
 }
 
 export const DEFAULT_SUBAGENT_CONFIG: Readonly<SubagentConfig> = Object.freeze({
@@ -350,6 +390,7 @@ export const DEFAULT_SUBAGENT_CONFIG: Readonly<SubagentConfig> = Object.freeze({
 	maxCorrections: 1,
 	timeout: Object.freeze({ idleMinutes: 10, maxMinutes: 30 }),
 	roleDefaults: Object.freeze({}),
+	repoSuites: Object.freeze({}),
 });
 
 const timeoutMinutes = parsers.number({ greaterThan: 0, max: 2_147_483_647 / 60_000 });
@@ -380,6 +421,7 @@ export function createSubagentConfigStore(agentDir = getAgentDir()) {
 			maxCorrections: field(parsers.integer({ min: 0 }), DEFAULT_SUBAGENT_CONFIG.maxCorrections),
 			timeout: field(timeoutField, DEFAULT_SUBAGENT_CONFIG.timeout),
 			roleDefaults: field(roleDefaultsField, DEFAULT_SUBAGENT_CONFIG.roleDefaults),
+			repoSuites: field((raw) => parseRepoSuites(raw), DEFAULT_SUBAGENT_CONFIG.repoSuites, { onInvalid: "disable" }),
 		},
 	});
 }

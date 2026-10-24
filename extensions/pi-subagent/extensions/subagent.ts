@@ -255,6 +255,8 @@ export default function subagentExtension(pi: ExtensionAPI): void {
 		executor,
 		policy: initialPolicy,
 		currentPolicy,
+		// Admission reads these after currentPolicy, which throws for a disabled config.
+		repoSuites: () => { const loaded = configStore.loadSync(); return loaded.status === "ok" ? loaded.value.repoSuites : {}; },
 		beforeRoleLaunch,
 	});
 	let directSequence = 0;

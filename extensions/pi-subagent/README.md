@@ -153,7 +153,7 @@ Use isolated mode for checked implementation. An isolated request has one durabl
 }
 ```
 
-`dependsOn` controls scheduling. `contextFrom` also schedules dependencies and supplies completed text outputs in order. Do not repeat a task in both fields. Changesets require focused checks; graphs with changesets require final checks. The canonical root `package.json` must have a test script. The runner adds `pnpm test` to final checks if absent.
+`dependsOn` controls scheduling. `contextFrom` also schedules dependencies and supplies completed text outputs in order. Do not repeat a task in both fields. Changesets require focused checks; graphs with changesets require final checks. Admission selects one Full suite for the repository and adds it to the final checks if absent. See [Full suite](#full-suite).
 
 Workers use Main's pinned committed branch, HEAD, and tree, not staged, unstaged, or untracked edits. Branch or HEAD changes block new waves. Candidates must be committed with no tracked or untracked changes. Ignored generated files permit candidacy but prevent automatic cleanup.
 
@@ -173,6 +173,24 @@ Combined validation can reuse a passed preliminary check of a staged candidate. 
 Reuse assumes that checks use only tracked content. Ignored files, for example `node_modules`, can be different between worktrees.
 
 The extension sends follow-ups when a candidate becomes ready, a worker needs attention, and the wave finishes. A missed follow-up does not authorize replay. Read [Isolated contract](./docs/orchestration.md#isolated-contract) and [Exact integration actions](./docs/orchestration.md#exact-integration-actions) for graph, judgment, revision, refresh, and release details.
+
+### Full suite
+
+Each isolated request with a changeset task must pass one Full suite on the combined tip before promotion. Admission selects it in this order:
+
+1. The `repoSuites` entry for the repository in the config file.
+2. `pnpm test`, when the root `package.json` has a non-empty `scripts.test`.
+3. `make test`, when the root `GNUmakefile`, `makefile`, or `Makefile` declares a literal `test` target, such as `test:` or `test::`.
+
+If no source applies, the request fails before it saves state. A read or parse error also fails. It never counts as an absent source. The extension reads the Makefile as text and never runs Make to find targets, because Make can run repository code. Generated, included, or pattern targets are not found. Use `repoSuites` for them:
+
+```json
+{ "repoSuites": { "/home/me/code/service": { "command": "uv", "args": ["run", "pytest", "-q"] } } }
+```
+
+The key is the absolute path of the primary checkout. Two keys for the same checkout block the request. The command runs without a shell. To use a shell, name it as the command.
+
+Admission saves the selected suite and its source with the request. Validation, resume, and recovery use the saved suite, so a later config change does not change an admitted request. Validation rejects a combined tip that changes the selected `package.json` test script or Makefile. A dry run shows the selected suite.
 
 ### Inspect work
 
@@ -217,6 +235,7 @@ Package-owned: `~/.pi/agent/config/pi-subagent/config.json`. Missing files silen
 | `timeout.idleMinutes` | Direct worker and ephemeral child idle timeout | Positive; within Node's timer range | `10` |
 | `timeout.maxMinutes` | Ephemeral child hard runtime | Greater than idle; within Node's timer range | `30` |
 | `roleDefaults` | Shared resources for built-in and user Roles | Object with `extensions`, `tools`, or `skills` arrays; same validation as Role fields | — |
+| `repoSuites` | Full suite for isolated changesets in one repository | Object keyed by the absolute path of the primary checkout. Each value is `{ "command": "<executable>", "args": [...] }` | — |
 
 `roleDefaults` entries precede Role entries; merging removes duplicates before resource resolution. Use it for a provider extension that every child needs. Limits come only from this file. Requests cannot override or replenish them. Durable requests keep recorded policy; a lower current correction limit can tighten recovery. There is no whole-run timeout.
 
@@ -225,6 +244,7 @@ The extension reports each new problem once per session. It reads config at laun
 - Unknown keys warn and are ignored. A likely misspelling, such as `maxToken` for missing `maxTokens`, counts as invalid for that key.
 - Invalid `maxSubagents`, `maxTurns`, `maxCorrections`, or `timeout` values warn and use finite defaults. If maximum timeout does not exceed idle timeout, the whole `timeout` uses defaults.
 - Unknown or invalid `roleDefaults` keys warn; only those keys are ignored, so Roles receive fewer default resources.
+- An invalid `repoSuites` value blocks delegation. One bad entry blocks the whole value, so a bad entry cannot select a different Full suite.
 - Invalid or misspelled `maxTokens` blocks delegation. Malformed JSON, invalid UTF-8, files above 64 KiB, and unreadable files also block delegation. The extension does not fall back to unlimited tokens.
 
 `/subagent` remains available during a block. Correct the file to enable delegation. The next worker or isolated Role launch fails while the block remains; running workers retain their original limits. If the problem existed at session start, also run `/reload`, because that session took default execution limits.
@@ -281,7 +301,7 @@ The executor accepts concurrency, turn/token, idle/hard-runtime limits, and abor
 
 Private durable state lives under `config/pi-subagent/state/`. Isolated worker sessions use mode `0600` under `config/pi-subagent/leases/`; worker umask stays unchanged. Reads stop at 16 MiB. Larger sessions require inspection and cannot prove completion.
 
-Sessions are removed only after exact worker-tab cleanup. They can contain prompts and answers: do not share them. State v5 rejects v4 and older files without migration. Preserve old state and recover its work manually.
+Sessions are removed only after exact worker-tab cleanup. They can contain prompts and answers: do not share them. State v6 rejects v5 and older files without migration. An unfinished v4 or v5 request blocks new isolated work in its repository. Finish or recover isolated requests with the earlier version before you upgrade. Preserve old state and recover its work manually.
 
 ## Limits and recovery
 
