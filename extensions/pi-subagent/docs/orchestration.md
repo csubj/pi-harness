@@ -180,7 +180,19 @@ Each direct row starts with a saved direct reference such as `D7.1`. `D7` is the
 
 A session switch can move a workflow into a session that already uses its number. In that case, the workflow gets a new number there. An existing Herdr tab keeps its original launch label.
 
-The direct widget shows the launched model, thinking level, elapsed time, measured task tokens (`— tok` until usage is available), and cost next to the tokens (such as `$0.12`; not shown when unknown or zero). Failed rows show before working and completed rows. When rows overflow, `… N more` includes counts by status.
+The direct widget shows the launched model, thinking level, elapsed time, measured task tokens (`— tok` until usage is available), and cost next to the tokens (such as `$0.12`; not shown when unknown or zero). Failed workflows show before working and completed workflows. When rows overflow, the final `└─ … N more` row includes counts by status.
+
+The direct widget is a tree under a `Main` header. The header counts the workers by status. A workflow with one worker is one row. A workflow with more than one worker gets a group row, and its launched workers are child rows:
+
+```text
+Main · 2 working · 1 complete
+├─ ⠋ D7 · 2 workers
+│  ├─ ⠋ D7.1 [S] Map entry points · …
+│  └─ ⠋ D7.2 [S] Map tests · …
+└─ ✓ D8.1 [R] complete · Review patch · …
+```
+
+In Pi fullscreen mode, click a working worker row to focus its Herdr pane. Before the extension moves focus, Herdr must confirm that the pane still runs the exact launched agent. If the check fails, Pi shows a warning and focus does not change. The header, group rows, finished rows, the overflow row, and rows with a truncated reference do nothing when you click them. Regular mode leaves the mouse to the terminal. Use the Herdr tab label or `/subagent` to find a worker from the keyboard. A click moves focus only. It gives no ownership or control authority.
 
 The isolated widget shows the recorded task state and any retained workspace. It does not show reliable live model, thinking, or token readings from Herdr. Attention shows before ordinary work, and overflow uses `+N more · /subagent`. An aborted request with visible tasks has its own `request aborted` row. This row does not change the recorded statuses of the tasks.
 
