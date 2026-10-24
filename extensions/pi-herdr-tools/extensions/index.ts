@@ -1,6 +1,7 @@
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import registerBtwExtension, { BTW_TASK } from "../internal/btw.ts";
 import herdrCloneExtension from "../internal/clone-tab.ts";
+import herdrCommandExtension from "../internal/command.ts";
 import herdrDoneExtension from "../internal/done.ts";
 import herdrHandoffExtension from "../internal/handoff.ts";
 import idleRecapExtension, { RECAP_TASK } from "../internal/recap.ts";
@@ -15,6 +16,7 @@ export default async function herdrToolsExtension(pi: ExtensionAPI): Promise<voi
 	herdrCloneExtension(pi);
 	herdrDoneExtension(pi);
 	herdrHandoffExtension(pi);
+	herdrCommandExtension(pi);
 	registerDialogStatus(pi);
 }
 

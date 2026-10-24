@@ -108,6 +108,8 @@ When Pi runs in a parent directory that holds many repositories, set `repo` to s
 
 The worker opens in the current Herdr workspace with the Repository target as its working directory. Change reports and stale-read checks use that checkout, and each result names its `repo`. A write request reserves the checkout of each target at one time, so writers in different repositories can run together. When Pi runs in a parent directory that is not a Git repository, each Main call that can write covers the whole parent. Such a call waits while a direct writer owns the checkout of any Repository target in it. Main can still read files and use `subagent_repos`.
 
+A `herdr_command` job with write access blocks direct writers in its checkout until `stop` proves that the job ended.
+
 An isolated request accepts one `repo` for the whole graph. Tasks cannot select another repository. The request then uses the Repository target as its checkout. State, worker worktrees, validation, and promotion belong to that repository. The Pi working directory does not change.
 
 Your Herdr workspace can belong to another checkout or to none. Herdr opens the primary workspace of the target when it opens the first worker worktree, and it does not close that workspace later. Pass the same `repo` to `subagent_status`, `subagent_resume`, `subagent_stage`, `subagent_integrate`, and `subagent_abort`.
@@ -277,7 +279,7 @@ The built-in reviewer answers exactly `PASS` when it finds no actionable correct
 
 The built-in reviewer and scout include `git_read`; existing user reviewers and scouts must add it to `tools`. No additional extension or Bash access is necessary. See [Reviewer Git inspection](./docs/orchestration.md#reviewer-git-inspection) for operations, parameters, limits, and Git requirements.
 
-Children load only declared resources and required adapters. Roles must list their model provider extension. `codemode` requires both `builtin:codemode` in `extensions` and `codemode` in `tools`. Missing Skills, tools, MCP servers, Roles, or routes fail before productive work. Main-only delegation, integration, and recovery tools, `herdr_handoff`, and `ask_question` stay unavailable to children.
+Children load only declared resources and required adapters. Roles must list their model provider extension. `codemode` requires both `builtin:codemode` in `extensions` and `codemode` in `tools`. Missing Skills, tools, MCP servers, Roles, or routes fail before productive work. Main-only delegation, integration, and recovery tools, `herdr_handoff`, `herdr_command`, and `ask_question` stay unavailable to children.
 
 Read [Role and resource policy](./docs/orchestration.md#role-and-resource-policy) for extension exposure, MCP validation, OAuth constraints, and child budgets. Project MCP overrides cannot change a Role's global allowlist or exposure.
 

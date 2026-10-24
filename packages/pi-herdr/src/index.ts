@@ -59,15 +59,19 @@ function shellPromptFollows(screen: string, token: string): boolean {
  * a non-blank line after it. An occupied pane is left untouched so `agent start` reports
  * `agent_pane_busy` itself. Returns the failed Herdr result, or undefined when ready.
  */
-async function awaitShellPrompt<Options>(
+export async function awaitShellPrompt<Options>(
 	client: Pick<HerdrClient<Options>, "exec">,
 	pane: string,
 	options: Options,
-	wait: (milliseconds: number) => Promise<void>,
+	wait: (milliseconds: number) => Promise<void> = delay,
+	requireShell = false,
 ): Promise<HerdrExecResult | undefined> {
 	const info = await client.exec(["pane", "process-info", "--pane", pane], options);
 	if (info.code !== 0 || info.killed) return info;
-	if (!shellOwnsForeground(info.stdout)) return undefined;
+	if (!shellOwnsForeground(info.stdout)) {
+		// `pane run` types into any foreground program. A caller that types a command requires the shell itself.
+		return requireShell ? { code: 1, stdout: "", stderr: `pane ${pane} runs a foreground program, not its shell` } : undefined;
+	}
 	const token = `pi-herdr-ready-${Math.random().toString(16).slice(2, 18).padEnd(16, "0")}`;
 	const ran = await client.exec(["pane", "run", pane, `echo ${token}`], options);
 	if (ran.code !== 0 || ran.killed) return ran;
