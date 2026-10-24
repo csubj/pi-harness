@@ -5,7 +5,7 @@
 
 ## Context
 
-Users often start Pi in a parent directory that is not a Git repository. For example, `~/code/dgxc-infrasec` holds 73 independent child repositories at depths 1 to 3. From such a directory, these features fail or degrade:
+Users often start Pi in a parent directory that is not a Git repository. For example, one directory can hold more than 70 independent child repositories at depths 1 to 3. From such a directory, these features fail or degrade:
 
 - Direct `delegate_task` runs, but the checkout admission key is the parent path. All child repositories share one writer reservation, and the extension makes no change report.
 - Isolated `delegate_task` fails. It resolves the canonical root from the Pi working directory and requires the caller's Herdr workspace to be a worktree of that root.

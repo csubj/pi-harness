@@ -93,6 +93,8 @@ For example, a configured Git operator with `bash` can stage named pending files
 
 Direct writes change Main's checkout immediately. They require no clean checkout. They give no automatic checks, rollback, or isolated integration guarantee. A write request cannot start while a direct writer owns the checkout. It also cannot start while a Main call that can write is in progress there.
 
+A task with `repo` runs in that Repository target instead of Main's checkout. Admission resolves the target before the launch and reserves the checkout of each target at one time. Two checkouts conflict when one contains the other. Thus a Main call from a non-Git parent directory covers the checkout of every Repository target in it, and writers in two different Repository targets can run together. An invalid `repo` blocks the call before any reservation. Admission does not parse Bash text for a directory.
+
 A write request runs its tasks in sequence. It holds checkout admission after the initial handle returns. Competing direct writers and Main writes fail until the extension proves that all owned workers stopped. To keep Main free to write, use `mode: isolated`. This mode gives worktree checks and explicit integration, not immediate changes to the shared checkout. Parallel read requests still run concurrently.
 
 A failure in a write request stops further dispatch, but a worker with an uncertain state can still run. Chains replace each literal `{previous}` with the preceding successful answer and stop on failure. Task outcome and worker termination are separate.

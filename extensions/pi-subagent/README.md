@@ -35,6 +35,7 @@ Commands, prompts, and UI are for you. Tools and the packaged skill are for Main
 | `/review [target] [focus]` | prompt | Tell Main to review a change with parallel `reviewer` tasks and give one ship verdict. See [Review a change](#review-a-change). |
 | `/subagent recover` | command | Classify interrupted isolated work in the canonical repository. Send Main request IDs, blockers, and next actions. Requires no UI or Herdr pane. |
 | `delegate_task` | tool | Start authorized shared-checkout work or a durable isolated checked graph. With `dryRun: true`, check the request and show the resolved plan without a launch. |
+| `subagent_repos` | tool | List the child Git repositories below the Pi working directory and the `repo` selector of each. Read-only. |
 | `subagent_status` | tool | Read saved isolated state, exact identities, failed review verdicts, and allowed continuation. Does not replay work. Supports structured output for `codemode`. |
 | `subagent_resume` | tool | Perform the reported `retry`, `verify`, or `finalize` continuation, not staging or integration. Same-worker correction retries accept optional `instruction` text. |
 | `subagent_stage` | tool | Stage, resolve, reject, or revise an exact candidate. Rejecting a staged candidate freezes its generation. |
@@ -95,7 +96,21 @@ A task packet above 64 KiB uses a private file, including the full previous answ
 
 Pi's `read` can retrieve lines of at most 50 KiB (51,200 bytes), with line offsets for more content. If any line is longer, the worker uses `bash`, even when the Role also has `read`. Without `bash`, that task fails before tab creation; use shorter lines or a Role with `bash`. A Role with neither tool also fails before tab creation. Chain context is never cut to the inline answer budget.
 
-To continue a finished worker, add `"continueFrom": "D7.1"` with the same `role`. This opens a new tab with the saved conversation and a new reference. Continue the newest reference from the original checkout and workspace. For eligibility and stop behavior, see [Continue or stop one direct worker](./docs/orchestration.md#continue-or-stop-one-direct-worker).
+### Repository targets
+
+When Pi runs in a parent directory that holds many repositories, set `repo` to select a child repository for a direct task. Use `subagent_repos` to list the selectors. Set `repo` on the request to apply it to all tasks, or on one task to override the request value:
+
+```json
+{ "mode": "direct", "repo": "team/service", "role": "scout", "name": "Map sign-in", "task": "Trace sign-in.", "access": "read" }
+```
+
+`repo` is a path relative to the Pi working directory. It must be a Git top-level directory, must not contain `..`, and must not resolve outside that directory. A subdirectory of a repository fails. No tool selects a child repository automatically.
+
+The worker opens in the current Herdr workspace with the Repository target as its working directory. Change reports and stale-read checks use that checkout, and each result names its `repo`. A write request reserves the checkout of each target at one time, so writers in different repositories can run together. When Pi runs in a parent directory that is not a Git repository, each Main call that can write covers the whole parent. Such a call waits while a direct writer owns the checkout of any Repository target in it. Main can still read files and use `subagent_repos`.
+
+Isolated mode does not accept `repo` yet.
+
+To continue a finished worker, add `"continueFrom": "D7.1"` with the same `role`. This opens a new tab with the saved conversation and a new reference. Continue the newest reference from the original checkout and workspace. For a worker that ran with `repo`, select the same `repo`. For eligibility and stop behavior, see [Continue or stop one direct worker](./docs/orchestration.md#continue-or-stop-one-direct-worker).
 
 ### Review a change
 

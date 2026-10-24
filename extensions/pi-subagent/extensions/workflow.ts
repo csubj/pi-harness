@@ -33,6 +33,11 @@ const AccessSchema = StringEnum(DIRECT_ACCESS, { description: ACCESS_GUIDANCE })
 const DryRunSchema = Type.Boolean({ description: "Optional. When true, run every launch validation and return the resolved plan without starting workers, saving state, or reserving the checkout." });
 const ContinueFromSchema = Type.String({ pattern: "^D[1-9][0-9]*\\.[1-9][0-9]*$", description: "Optional direct worker reference such as D7.1. Continues that finished worker's Pi session in a new tab with this task; role must equal the recorded Role." });
 
+const RepoSchema = Type.String({
+	minLength: 1,
+	description: "Optional Repository target: a child Git repository as a path relative to the Pi working directory, such as team/service. The worker runs there, and admission reserves that checkout. A task value overrides the request value. Omit it to use the Pi working directory. Use subagent_repos to list targets.",
+});
+
 const PathsSchema = Type.Array(Type.String({ minLength: 1 }), {
 	minItems: 1,
 	maxItems: 32,
@@ -46,6 +51,7 @@ export const DelegationSchema = Type.Object({
 	access: AccessSchema,
 	paths: Type.Optional(PathsSchema),
 	continueFrom: Type.Optional(ContinueFromSchema),
+	repo: Type.Optional(RepoSchema),
 	kind: Type.Optional(DirectKindSchema),
 	model: Type.Optional(ModelSchema),
 	modelClass: Type.Optional(ModelClassSchema),
@@ -59,6 +65,7 @@ export const DirectWorkflowSchema = Type.Object({
 	access: Type.Optional(AccessSchema),
 	paths: Type.Optional(PathsSchema),
 	continueFrom: Type.Optional(ContinueFromSchema),
+	repo: Type.Optional(RepoSchema),
 	kind: Type.Optional(DirectKindSchema),
 	model: Type.Optional(ModelSchema),
 	modelClass: Type.Optional(ModelClassSchema),
@@ -114,8 +121,18 @@ function normalizePaths(value: Static<typeof DelegationSchema>, path: string): s
 	});
 }
 
-function normalizeDelegation(value: Static<typeof DelegationSchema>, path: string): Delegation {
+/** Check the selector shape here. Admission and launch resolve it against the Pi working directory. */
+function normalizeRepo(value: string, path: string): string {
+	const normalized = text(value, path);
+	if (/[\u0000-\u001f\u007f-\u009f]/.test(normalized) || normalized.startsWith("/") || normalized.split(/[\\/]/).includes("..")) {
+		throw new Error(`${path} must be a relative path without control characters or .. components.`);
+	}
+	return normalized;
+}
+
+function normalizeDelegation(value: Static<typeof DelegationSchema>, path: string, requestRepo?: string): Delegation {
 	const paths = normalizePaths(value, path);
+	const repo = value.repo === undefined ? requestRepo : normalizeRepo(value.repo, `${path}.repo`);
 	return {
 		role: text(value.role, `${path}.role`),
 		name: normalizeTaskName(value.name, `${path}.name`),
@@ -123,6 +140,7 @@ function normalizeDelegation(value: Static<typeof DelegationSchema>, path: strin
 		access: value.access,
 		...(paths === undefined ? {} : { paths }),
 		...(value.continueFrom === undefined ? {} : { continueFrom: value.continueFrom }),
+		...(repo === undefined ? {} : { repo }),
 		kind: "text",
 		...(value.model === undefined ? {} : { model: text(value.model, `${path}.model`) }),
 		...(value.modelClass === undefined ? {} : { modelClass: value.modelClass }),
@@ -164,9 +182,10 @@ export function parseWorkflow(value: unknown): ParsedWorkflow {
 	if (!mode) throw new Error("direct workflow must select exactly one of single, tasks, or chain.");
 	const input = value as DirectInput;
 	if (mode === "single" && !hasDelegation(input)) throw new Error("direct workflow requires role, name, task, and access.");
+	const repo = input.repo === undefined ? undefined : normalizeRepo(input.repo, "workflow.repo");
 	const workflow: ParsedWorkflow = mode === "single" ? { mode, delegations: [normalizeDelegation(input as Static<typeof DelegationSchema>, "workflow")] }
-		: mode === "parallel" ? { mode, delegations: input.tasks!.map((item, index) => normalizeDelegation(item, `tasks[${index}]`)) }
-		: { mode, delegations: input.chain!.map((item, index) => normalizeDelegation(item, `chain[${index}]`)) };
+		: mode === "parallel" ? { mode, delegations: input.tasks!.map((item, index) => normalizeDelegation(item, `tasks[${index}]`, repo)) }
+		: { mode, delegations: input.chain!.map((item, index) => normalizeDelegation(item, `chain[${index}]`, repo)) };
 	const continued = workflow.delegations.flatMap(({ continueFrom }) => continueFrom === undefined ? [] : [continueFrom]);
 	if (new Set(continued).size !== continued.length) throw new Error("A direct request may continue each worker at most once.");
 	return workflow;
@@ -174,6 +193,9 @@ export function parseWorkflow(value: unknown): ParsedWorkflow {
 
 /** A direct request is a writer request when any task declares write access. */
 export const writesCheckout = (workflow: ParsedWorkflow): boolean => workflow.delegations.some(({ access }) => access === "write");
+
+/** The Repository target of each task. `undefined` means the Pi working directory. */
+export const workflowRepos = (workflow: ParsedWorkflow): Array<string | undefined> => workflow.delegations.map(({ repo }) => repo);
 
 /** `dryRun` is a tool-call option, not part of the direct workflow or the durable isolated request. */
 export function parseDelegateTask(value: unknown): ParsedDelegateTask {
@@ -185,6 +207,7 @@ export function parseDelegateTask(value: unknown): ParsedDelegateTask {
 		value = rest;
 	}
 	if (value && typeof value === "object" && !Array.isArray(value) && (value as { mode?: unknown }).mode === "isolated") {
+		if (Object.hasOwn(value, "repo")) throw new Error("mode isolated does not accept repo yet. Start Pi in the repository, or use mode direct.");
 		return { mode: "isolated", request: parseExecuteRequest(value), dryRun };
 	}
 	return { mode: "direct", workflow: parseWorkflow(value), dryRun };

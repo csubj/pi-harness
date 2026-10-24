@@ -1,6 +1,8 @@
+import { realpath } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import type { ExecResult, ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { createHerdrClient, withWorktreeLock } from "@hcflabs/pi-herdr";
+import { resolveWorkspace } from "./worktree.ts";
 
 type SnapshotPane = { tab_id?: unknown; cwd?: unknown };
 type TabEntry = { tab_id?: unknown; workspace_id?: unknown; label?: unknown };
@@ -27,8 +29,8 @@ export default function herdrDoneExtension(pi: ExtensionAPI): void {
 			}
 			const tabId = process.env.HERDR_TAB_ID?.trim();
 			if (!tabId) throw new Error("HERDR_TAB_ID is missing.");
-			const workspaceId = process.env.HERDR_WORKSPACE_ID?.trim();
-			if (!workspaceId) throw new Error("HERDR_WORKSPACE_ID is missing.");
+			const paneId = process.env.HERDR_PANE_ID?.trim();
+			if (!paneId) throw new Error("HERDR_PANE_ID is missing.");
 
 			if (!force) {
 				const confirmed = await ctx.ui.confirm("Done", "Close its Herdr tabs and remove the current worktree?");
@@ -36,7 +38,15 @@ export default function herdrDoneExtension(pi: ExtensionAPI): void {
 			}
 
 			await ctx.waitForIdle();
-			const checkout = (await execOrThrow("git", ["rev-parse", "--show-toplevel"], ctx.cwd)).trim();
+			// The checkout comes from the Herdr workspace of this pane, not from the Pi working directory.
+			// Pi can run in a parent directory or a subdirectory of the checkout.
+			const workspace = await resolveWorkspace(herdr, ctx.cwd, paneId);
+			const workspaceId = workspace.workspaceId;
+			if (!workspace.isLinkedWorktree || !workspace.checkout) {
+				throw new Error(`/done: Herdr workspace ${workspaceId} is not a linked Git worktree. Nothing was removed.`);
+			}
+			// Herdr can report a path without symlink resolution. Git and pane paths use the real path.
+			const checkout = await realpath(workspace.checkout);
 			// First record of the NUL-delimited list is always the main worktree;
 			// -z keeps paths containing newlines parseable.
 			const worktreeFields = (await execOrThrow("git", ["worktree", "list", "--porcelain", "-z"], checkout)).split("\0");
@@ -78,9 +88,10 @@ export default function herdrDoneExtension(pi: ExtensionAPI): void {
 					throw new Error(`Worktree still used by Herdr tabs ${names.join(", ")}; close them first.`);
 				}
 
+				// Run Git in the primary checkout of the same repository. Pi's cwd can be outside it.
 				await execOrThrow("git", [
 					"worktree", "remove", ...(force ? ["--force"] : []), checkout,
-				], ctx.cwd);
+				], mainCheckout);
 				return siblingTabIds;
 			});
 			try {

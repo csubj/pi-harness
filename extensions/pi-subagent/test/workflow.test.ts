@@ -12,6 +12,7 @@ import {
 	identifyWorkflowEntries,
 	parseDelegateTask,
 	parseWorkflow as parseDirectWorkflow,
+	workflowRepos,
 	runForegroundWorkflow as runEntries,
 	type DelegationRunner,
 	type ParsedWorkflow,
@@ -324,4 +325,18 @@ test("a checkout snapshot reads a worktree rename source as a path, not a status
 	await rename(join(cwd, "a.txt"), join(cwd, "b.txt"));
 	git("add", "-N", "b.txt");
 	assert.deepEqual([...(await snapshotCheckout(cwd))!.entries.keys()].sort(), ["a.txt", "b.txt"]);
+});
+
+test("direct repo selects a Repository target for each task; a task value overrides the request value", () => {
+	assert.equal(parseWorkflow({ ...delegation(), repo: " team/service " }).delegations[0]!.repo, "team/service");
+	const parallel = parseWorkflow({ repo: "a", tasks: [delegation(), { ...delegation(), repo: "b" }] });
+	assert.deepEqual(workflowRepos(parallel), ["a", "b"]);
+	assert.deepEqual(workflowRepos(parseWorkflow({ chain: [delegation(), delegation()] })), [undefined, undefined]);
+	for (const repo of ["../outside", "/abs", "a/../b", "bad\u0001name"]) {
+		assert.throws(() => parseWorkflow({ ...delegation(), repo }), /relative path without control characters or \.\. components/, repo);
+		assert.throws(() => parseWorkflow({ tasks: [{ ...delegation(), repo }] }), /tasks\[0\]\.repo/, repo);
+	}
+	// A request-level repo does not count as a compact single task.
+	assert.equal(parseWorkflow({ repo: "a", tasks: [delegation()] }).mode, "parallel");
+	assert.throws(() => parseDelegateTask({ mode: "isolated", repo: "a", tasks: [] }), /mode isolated does not accept repo yet/);
 });

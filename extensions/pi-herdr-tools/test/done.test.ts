@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, realpath, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test, { after } from "node:test";
@@ -16,8 +16,8 @@ type ExecCall = { command: string; args: string[]; options: { cwd: string } };
 type Executor = (call: ExecCall) => ExecResult | Promise<ExecResult>;
 
 const ok = (stdout = ""): ExecResult => ({ stdout, stderr: "", code: 0 });
-const checkout = await mkdtemp(join(tmpdir(), "pi-herdr-done-"));
-const mainCheckoutDir = await mkdtemp(join(tmpdir(), "pi-herdr-done-main-"));
+const checkout = await realpath(await mkdtemp(join(tmpdir(), "pi-herdr-done-")));
+const mainCheckoutDir = await realpath(await mkdtemp(join(tmpdir(), "pi-herdr-done-main-")));
 after(async () => {
 	await rm(checkout, { recursive: true, force: true });
 	await rm(mainCheckoutDir, { recursive: true, force: true });
@@ -43,6 +43,8 @@ function harness(executor: Executor = () => ok()) {
 
 function snapshotExecutor(options: {
 	toplevel?: string;
+	paneWorkspace?: string;
+	linked?: boolean;
 	mainCheckout?: string;
 	bareMain?: boolean;
 	panes?: unknown[];
@@ -51,7 +53,19 @@ function snapshotExecutor(options: {
 	pullResult?: ExecResult;
 } = {}): Executor {
 	return async ({ command, args }) => {
-		if (command === "git" && args[0] === "rev-parse") return ok(`${options.toplevel ?? checkout}\n`);
+		if (command === "herdr" && args[0] === "pane" && args[1] === "get") {
+			return ok(JSON.stringify({ result: { pane: { pane_id: args[2], workspace_id: options.paneWorkspace ?? "w1" } } }));
+		}
+		if (command === "herdr" && args[0] === "workspace" && args[1] === "get") {
+			return ok(JSON.stringify({ result: { workspace: {
+				workspace_id: args[2],
+				worktree: {
+					checkout_path: options.toplevel ?? checkout,
+					repo_root: options.mainCheckout ?? mainCheckoutDir,
+					is_linked_worktree: options.linked ?? true,
+				},
+			} } }));
+		}
 		if (command === "git" && args[0] === "worktree" && args[1] === "list") {
 			assert.deepEqual(args, ["worktree", "list", "--porcelain", "-z"]);
 			const main = options.mainCheckout ?? mainCheckoutDir;
@@ -77,7 +91,7 @@ async function withHerdrEnvironment(
 	herdrEnv: string | undefined,
 	tabId: string | undefined,
 	run: () => Promise<void>,
-	workspaceId: string | null | undefined = "w1",
+	paneId: string | null | undefined = "w1:p1",
 ): Promise<void> {
 	const setEnvironment = (values: Record<string, string | undefined>) => {
 		for (const [key, value] of Object.entries(values)) {
@@ -88,7 +102,7 @@ async function withHerdrEnvironment(
 	const environment = {
 		HERDR_ENV: herdrEnv,
 		HERDR_TAB_ID: tabId,
-		HERDR_WORKSPACE_ID: workspaceId ?? undefined,
+		HERDR_PANE_ID: paneId ?? undefined,
 	};
 	const previous = Object.fromEntries(Object.keys(environment).map((key) => [key, process.env[key]]));
 	setEnvironment(environment);
@@ -120,11 +134,12 @@ test("/done resolves the checkout root, skips own tab, removes the checkout, the
 			"idle",
 		]);
 		assert.deepEqual(app.calls, [
-			{ command: "git", args: ["rev-parse", "--show-toplevel"], options: { cwd: "/repo/worktree/nested" } },
+			{ command: "herdr", args: ["pane", "get", "w1:p1"], options: { cwd: "/repo/worktree/nested" } },
+			{ command: "herdr", args: ["workspace", "get", "w1"], options: { cwd: "/repo/worktree/nested" } },
 			{ command: "git", args: ["worktree", "list", "--porcelain", "-z"], options: { cwd: checkout } },
 			{ command: "herdr", args: ["api", "snapshot"], options: { cwd: "/repo/worktree/nested" } },
 			{ command: "herdr", args: ["tab", "list"], options: { cwd: "/repo/worktree/nested" } },
-			{ command: "git", args: ["worktree", "remove", checkout], options: { cwd: "/repo/worktree/nested" } },
+			{ command: "git", args: ["worktree", "remove", checkout], options: { cwd: mainCheckoutDir } },
 			{ command: "git", args: ["pull", "--ff-only"], options: { cwd: mainCheckoutDir } },
 			{ command: "herdr", args: ["tab", "close", "w1:t1"], options: { cwd: tmpdir() } },
 		]);
@@ -189,7 +204,7 @@ test("/done refuses with blocking tab labels when another Herdr tab uses the che
 			await assert.rejects(
 				app.command("", context()),
 				/still used by Herdr tabs Fix puid pgid, w3:t4/);
-			assert.equal(app.calls.length, 4);
+			assert.equal(app.calls.length, 5);
 		});
 	}
 });
@@ -214,7 +229,7 @@ test("/done does not check or remove while clone creation holds the checkout loc
 	await withHerdrEnvironment("1", "w1:t1", () => withWorktreeLock(checkout, async () => {
 		const app = harness(snapshotExecutor());
 		await assert.rejects(app.command("", context()), /already being held/);
-		assert.deepEqual(app.calls.map((call) => call.args[0]), ["rev-parse", "worktree"]);
+		assert.deepEqual(app.calls.map((call) => call.args[0]), ["pane", "workspace", "worktree"]);
 	}));
 });
 
@@ -230,27 +245,37 @@ test("declined confirmation leaves the worktree untouched", async () => {
 
 test("/done fails safely before any execution and preserves removal errors", async (t) => {
 	await t.test("rejects arguments and missing Herdr context before execution", async () => {
-		for (const [args, herdrEnv, tabId, workspaceId, expected] of [
-			["--yes", "1", "w1:t1", "w1", /Usage: \/done \[--force\|-f\]/],
-			["-f extra", "1", "w1:t1", "w1", /Usage: \/done \[--force\|-f\]/],
-			["", undefined, "w1:t1", "w1", /inside Herdr/],
-			["", "1", undefined, "w1", /HERDR_TAB_ID/],
-			["", "1", "w1:t1", null, /HERDR_WORKSPACE_ID/],
+		for (const [args, herdrEnv, tabId, paneId, expected] of [
+			["--yes", "1", "w1:t1", "w1:p1", /Usage: \/done \[--force\|-f\]/],
+			["-f extra", "1", "w1:t1", "w1:p1", /Usage: \/done \[--force\|-f\]/],
+			["", undefined, "w1:t1", "w1:p1", /inside Herdr/],
+			["", "1", undefined, "w1:p1", /HERDR_TAB_ID/],
+			["", "1", "w1:t1", null, /HERDR_PANE_ID/],
 		] as const) {
 			await withHerdrEnvironment(herdrEnv, tabId, async () => {
 				const app = harness();
 				await assert.rejects(app.command(args, context()), expected);
 				assert.deepEqual(app.calls, []);
-			}, workspaceId);
+			}, paneId);
 		}
 	});
 
 	await t.test("rejects mismatched Herdr tab and workspace context before removal", async () => {
 		await withHerdrEnvironment("1", "w1:t1", async () => {
-			const app = harness(snapshotExecutor());
+			const app = harness(snapshotExecutor({ paneWorkspace: "w9" }));
 			await assert.rejects(app.command("", context()), /does not belong to workspace w9/);
 			assert.equal(app.calls.some((call) => call.args[1] === "remove"), false);
-		}, "w9");
+		});
+	});
+
+	await t.test("refuses a workspace that is not a linked worktree", async () => {
+		for (const options of [{ linked: false }, { linked: false, toplevel: mainCheckoutDir }]) {
+			await withHerdrEnvironment("1", "w1:t1", async () => {
+				const app = harness(snapshotExecutor(options));
+				await assert.rejects(app.command("--force", context()), /w1 is not a linked Git worktree\. Nothing was removed/);
+				assert.deepEqual(app.calls.map((call) => call.args.slice(0, 2)), [["pane", "get"], ["workspace", "get"]]);
+			});
+		}
 	});
 
 	await t.test("skips the parent pull when the session is the main worktree", async () => {
@@ -276,7 +301,7 @@ test("/done fails safely before any execution and preserves removal errors", asy
 				removeResult: { stdout: "", stderr: "error: the following file is dirty", code: 1 },
 			}));
 			await assert.rejects(app.command("", context()), /dirty/);
-			assert.equal(app.calls.length, 5);
+			assert.equal(app.calls.length, 6);
 			assert.equal(app.calls.some((call) => call.args[1] === "close"), false);
 		});
 	});
@@ -302,7 +327,7 @@ test("/done fails safely before any execution and preserves removal errors", asy
 				removeResult: { stdout: "", stderr: "", code: 0, killed: true },
 			}));
 			await assert.rejects(app.command("", context()), /killed/);
-			assert.equal(app.calls.length, 5);
+			assert.equal(app.calls.length, 6);
 		});
 	});
 });
