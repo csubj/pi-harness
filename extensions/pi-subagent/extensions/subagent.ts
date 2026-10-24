@@ -703,7 +703,7 @@ export default function subagentExtension(pi: ExtensionAPI): void {
 			try {
 				const parsed = parseDelegateTask(args);
 				const dryRun = parsed.dryRun ? { dryRun: true } : {};
-				if (parsed.mode === "isolated") return { ...parsed.request, ...dryRun };
+				if (parsed.mode === "isolated") return { ...parsed.request, ...(parsed.repo === undefined ? {} : { repo: parsed.repo }), ...dryRun };
 				const workflow = parsed.workflow;
 				if (workflow.mode === "single") return { mode: "direct" as const, ...workflow.delegations[0], ...dryRun };
 				if (workflow.mode === "parallel") return { mode: "direct" as const, tasks: workflow.delegations, ...dryRun };
@@ -716,7 +716,7 @@ export default function subagentExtension(pi: ExtensionAPI): void {
 			reportConfig(ctx);
 			const parsed = parseDelegateTask(params);
 			if (parsed.mode === "isolated") {
-				return parsed.dryRun ? await isolatedSurface.plan(parsed.request, signal, ctx) : await isolatedSurface.execute(parsed.request, signal, ctx);
+				return parsed.dryRun ? await isolatedSurface.plan(parsed.request, signal, ctx, parsed.repo) : await isolatedSurface.execute(parsed.request, signal, ctx, parsed.repo);
 			}
 			const workflow = parsed.workflow;
 			const catalog = loadRoleCatalog();

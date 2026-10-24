@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, realpath, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, realpath, rm } from "node:fs/promises";
+import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -191,6 +192,7 @@ function response(method: string, continuation = false, state: RunState = PRIVAT
 function createHarness(options: {
 	runner?: IsolatedExtensionComponents["runner"];
 	resolveRoot?: IsolatedExtensionComponents["resolveRoot"];
+	allOrphans?: { requests: Array<Record<string, unknown> & { primary: string }>; invalidIds: string[] };
 	responseState?: RunState;
 	inventoryStates?: RunState[];
 	onCreate?: (options: Parameters<CreateIsolatedComponents>[0]) => void;
@@ -258,6 +260,7 @@ function createHarness(options: {
 			return "follow-up queued";
 		},
 		listOrphanRequests() { return { requests: [], invalidIds: [] }; },
+		listAllOrphanRequests() { return options.allOrphans ?? { requests: [], invalidIds: [] }; },
 		hasProductiveRunLease() { return false; },
 		listRequests(...args: unknown[]) {
 			runnerCalls.push({ method: "listRequests", args });
@@ -1657,4 +1660,57 @@ test("subagent_stage routes one strict exact-identity Main action to the canonic
 	const result = await executeTool(stage, action, signal, context("/canonical/repository/nested"));
 	assert.deepEqual(harness.runnerCalls, [{ method: "stage", args: [action, CANONICAL_ROOT, signal] }]);
 	assert.match(result.content[0]!.text, /bounded stage result/);
+});
+
+test("recovery tools accept repo, resolve the Repository target, and keep repo out of the runner request", async (t) => {
+	const parent = await realpath(await mkdtemp(join(tmpdir(), "pi-subagent-isolated-parent-")));
+	t.after(() => rm(parent, { recursive: true, force: true }));
+	const child = join(parent, "team", "service");
+	await mkdir(child, { recursive: true });
+	execFileSync("git", ["init", "-q", child]);
+	const harness = createHarness({ resolveRoot: async (cwd) => cwd });
+	const abort = namedTool(harness, "subagent_abort");
+	// Recovery tools normalize repo like delegate_task, so both select the same Repository target.
+	assert.deepEqual(abort.prepareArguments({ id: "request-one", repo: " team/service " }), { id: "request-one", repo: "team/service" });
+	for (const repo of ["", "../x", "/abs"]) assert.throws(() => abort.prepareArguments({ id: "request-one", repo }), /repo must be/, repo);
+	await executeTool(abort, { id: "request-one", repo: "team/service" }, undefined, context(parent));
+	assert.deepEqual(harness.runnerCalls.filter(({ method }) => method === "abort").at(-1)!.args.slice(0, 2), ["request-one", child]);
+	await assert.rejects(executeTool(abort, { id: "request-one", repo: "team" }, undefined, context(parent)), /not in a Git repository/);
+	// A root that differs from the validated target is refused.
+	const moved = createHarness({ resolveRoot: async () => parent });
+	await assert.rejects(executeTool(namedTool(moved, "subagent_abort"), { id: "request-one", repo: "team/service" }, undefined, context(parent)), /Git now reports/);
+	assert.equal(moved.runnerCalls.some(({ method }) => method === "abort"), false);
+	const resume = namedTool(harness, "subagent_resume");
+	assert.deepEqual(resume.prepareArguments({ id: "request-one", action: "verify", taskId: "unit-one", repo: "team/service" }),
+		{ id: "request-one", action: "verify", taskId: "unit-one", repo: "team/service" });
+});
+
+test("inventory outside a Git repository lists the requests of each Repository target with its repo", async (t) => {
+	const parent = await realpath(await mkdtemp(join(tmpdir(), "pi-subagent-inventory-parent-")));
+	t.after(() => rm(parent, { recursive: true, force: true }));
+	const child = join(parent, "team", "service");
+	await mkdir(child, { recursive: true });
+	execFileSync("git", ["init", "-q", child]);
+	const harness = createHarness({
+		resolveRoot: async (cwd) => {
+			if (cwd === parent) throw new Error("not a Git checkout");
+			return cwd;
+		},
+		allOrphans: { invalidIds: [], requests: [
+			{ id: "orphan", name: "Gone", status: "saved running · unverified", root: join(child, "..", "removed"), orphaned: true, tasks: [], primary: child },
+			{ id: "elsewhere", name: "Other", status: "aborted", root: "/gone", orphaned: true, tasks: [], primary: "/other/repo" },
+		] },
+	});
+	const inventory = await harness.surface.inventory(parent);
+	assert.equal(inventory.root, parent);
+	assert.deepEqual(harness.runnerCalls.filter(({ method }) => method === "listRequests").map(({ args }) => args[0]), [child]);
+	assert.deepEqual(inventory.requests.map(({ id, repo, leaseLive, checkout }) => [id, repo, leaseLive, checkout]), [
+		["request-one", "team/service", false, child],
+		["orphan", "team/service", false, child],
+	]);
+	assert.deepEqual(inventory.invalidIds, ["team/service/damaged"]);
+	assert.deepEqual(inventory.warnings, []);
+	// A Git failure inside a repository is not a parent directory.
+	const failing = createHarness({ resolveRoot: async () => { throw new Error("git timed out"); } });
+	await assert.rejects(failing.surface.inventory(child), /git timed out/);
 });

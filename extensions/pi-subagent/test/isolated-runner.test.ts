@@ -3323,6 +3323,9 @@ test("removed-parent requests are listed from another checkout and can be discar
 	const viewer = join(root, "..", "viewer");
 	execFileSync("git", ["worktree", "add", "-b", "viewer", viewer], { cwd: root, stdio: "pipe" });
 	const inventory = await runner.listOrphanRequests(viewer);
+	// One store scan also finds the orphan, with the live primary checkout that owns it.
+	const all = await runner.listAllOrphanRequests();
+	assert.deepEqual(all.requests.map(({ id, primary }) => [id, primary]), [["discard-request", await realpath(root)]]);
 	assert.equal(inventory.requests.length, 1);
 	assert.equal(inventory.requests[0]!.orphaned, true);
 	assert.equal(inventory.requests[0]!.directory, directory);
@@ -3451,4 +3454,21 @@ test("discard closes all reviewed workers before deleting any checkout", async (
 	assert.equal(results.length, 2);
 	assert.ok(results.every((item) => item.outcome === "removed"), JSON.stringify(results));
 	assert.equal((await runner.listRequests(root)).requests[0]!.status, "aborted");
+});
+
+test("a targeted plan and execute tell preflight that the caller selected a Repository target", async (t) => {
+	const { root, runtime, runner } = await harness(t);
+	const inputs: Array<Parameters<CoordinatorRuntime["preflight"]>[0]> = [];
+	const preflight = runtime.preflight.bind(runtime);
+	runtime.preflight = async (input, context) => { inputs.push(input); return await preflight(input, context); };
+	await runner.plan(request("targeted", [textTask("text")]), root, undefined, { targeted: true });
+	await runner.plan(request("untargeted", [textTask("text")]), root);
+	assert.deepEqual(inputs.map(({ targeted }) => targeted), [true, undefined]);
+});
+
+test("a targeted plan rejects a root that differs from the Repository target", async (t) => {
+	const { root, runtime, runner } = await harness(t);
+	const preflight = runtime.preflight.bind(runtime);
+	runtime.preflight = async (input, context) => ({ ...await preflight(input, context), root: await realpath(join(root, "..")) });
+	await assert.rejects(runner.plan(request("targeted", [textTask("text")]), root, undefined, { targeted: true }), /now resolves to .*nothing was saved/);
 });

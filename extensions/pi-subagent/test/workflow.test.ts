@@ -338,5 +338,12 @@ test("direct repo selects a Repository target for each task; a task value overri
 	}
 	// A request-level repo does not count as a compact single task.
 	assert.equal(parseWorkflow({ repo: "a", tasks: [delegation()] }).mode, "parallel");
-	assert.throws(() => parseDelegateTask({ mode: "isolated", repo: "a", tasks: [] }), /mode isolated does not accept repo yet/);
+	// An isolated graph has one request-level Repository target, outside the durable request.
+	const graph = { mode: "isolated", id: "request", goal: "Inspect", tasks: [{ id: "task", kind: "text", role: "scout", modelClass: "fast",
+		requirements: "Inspect", deliverable: "Report", dependsOn: [], contextFrom: [] }] };
+	const isolated = parseDelegateTask({ ...graph, repo: " team/a " });
+	assert.equal(isolated.mode === "isolated" && isolated.repo, "team/a");
+	assert.equal(isolated.mode === "isolated" && Object.hasOwn(isolated.request, "repo"), false);
+	assert.throws(() => parseDelegateTask({ ...graph, repo: "../a" }), /repo must be a relative path without control characters or \.\. components/);
+	assert.throws(() => parseDelegateTask({ ...graph, tasks: [{ ...graph.tasks[0], repo: "team/a" }] }), /strict task schema/);
 });

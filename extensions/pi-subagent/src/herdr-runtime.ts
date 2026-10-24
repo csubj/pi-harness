@@ -352,8 +352,13 @@ export class HerdrHostRuntime implements HostRuntime {
 		this.executionBudget = options.executionBudget;
 	}
 
-	/** Fail-closed Herdr caller/capability gate. This method creates no state or host resource. */
-	async preflightHost(input: { root: string }, context: OperationContext): Promise<void> {
+	/**
+	 * Fail-closed Herdr caller/capability gate. This method creates no state or host resource.
+	 * Without `targeted`, the caller's workspace must be the checkout `root`. With `targeted`, `root` is a
+	 * Repository target, and the caller's workspace can belong to any checkout or to none.
+	 * Herdr opens the primary workspace of the target when it opens an owned worktree.
+	 */
+	async preflightHost(input: { root: string; targeted?: boolean }, context: OperationContext): Promise<void> {
 		context.signal.throwIfAborted();
 		if (this.env.HERDR_ENV !== "1") throw new Error("Pi Subagent requires HERDR_ENV=1.");
 		const paneId = exactString(this.env.HERDR_PANE_ID, "HERDR_PANE_ID");
@@ -387,6 +392,11 @@ export class HerdrHostRuntime implements HostRuntime {
 		const workspaceId = exactString(pane.workspace_id, "Herdr current workspace_id");
 		const workspaceResponse = await this.herdr.json(["workspace", "get", workspaceId], this.processOptions(root, context, HERDR_OPERATION_CAP_MS));
 		const workspace = parseWorkspaceInfo(workspaceResponse, workspaceId);
+		if (input.targeted) {
+			// The worker worktrees open from the primary checkout of the target, not from the caller's workspace.
+			await this.repositoryIdentity(root, context);
+			return;
+		}
 		const worktree = record(workspace.worktree, "Herdr current workspace worktree");
 		const checkout = await realpath(exactString(worktree.checkout_path, "Herdr current checkout_path"));
 		if (checkout !== root) throw new Error("The current Herdr workspace checkout does not match canonical Main.");

@@ -1,7 +1,9 @@
-import { basename } from "node:path";
+import { basename, relative, sep } from "node:path";
 import type { JsonValue } from "@earendil-works/pi-ai";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { truncateToWidth } from "@earendil-works/pi-tui";
+import { discoverRepos, gitTopLevel, isWithin, resolveRepoTarget, type RepoDiscovery } from "@hcflabs/pi-repo";
+import { Type, type TObject, type TProperties } from "typebox";
 import { capEphemeralSubagentOutput, utf8Prefix, type EphemeralSubagentExecutor } from "../dist/ephemeral.js";
 import {
 	createCanonicalGitRootResolver,
@@ -43,6 +45,7 @@ import { FileRunStore } from "../dist/store.js";
 import { workerOutputForMain } from "./result-transport.ts";
 import type { CleanupReport, IsolatedInventory, IsolatedRequest, PrunePlan } from "./subagent-command.ts";
 import type { DiscardPlan } from "../dist/discard.js";
+import { normalizeRepo } from "./workflow.ts";
 
 const LOOKUP_ROOT_TIMEOUT_MS = 5_000;
 const PUBLIC_EVIDENCE_MAX_BYTES = 512;
@@ -87,7 +90,7 @@ export const createIsolatedComponents: CreateIsolatedComponents = ({
 		pi,
 		context,
 		resolveRoot,
-		preflightHost: async ({ root }, operation) => await host.preflightHost({ root }, operation),
+		preflightHost: async ({ root, targeted }, operation) => await host.preflightHost({ root, ...(targeted ? { targeted } : {}) }, operation),
 		inspectMainBase: async (input, operation) => await git.inspectMainBase(input, operation),
 	});
 	return {
@@ -522,10 +525,32 @@ export function formatExecutePlan(plan: ExecutePlan, hostChecked: boolean): { co
 	};
 }
 
+const RepoParameter = Type.Optional(Type.String({
+	minLength: 1,
+	description: "Repository target of the request: the same repo that delegate_task used, as a path relative to the Pi working directory. Omit it when the request runs in the checkout of the Pi working directory.",
+}));
+
+/** Add the optional `repo` selector to a flat tool schema. The selector is not part of the durable request. */
+function withRepo<P extends TProperties>(schema: TObject<P>): TObject<P & { repo: typeof RepoParameter }> {
+	return Type.Object({ ...schema.properties, repo: RepoParameter }, { additionalProperties: false }) as unknown as TObject<P & { repo: typeof RepoParameter }>;
+}
+
+/** Parse the request without `repo`, then add `repo` back as a separate selector. */
+function parseWithRepo<T extends object>(parse: (value: unknown) => T): (value: unknown) => T & { repo?: string } {
+	return (value) => {
+		if (!value || typeof value !== "object" || Array.isArray(value) || !Object.hasOwn(value, "repo")) return parse(value);
+		const { repo, ...rest } = value as Record<string, unknown>;
+		if (typeof repo !== "string") throw new Error("repo must be a relative path.");
+		// Normalize like delegate_task, so a recovery call selects the same Repository target.
+		return { ...parse(rest), repo: normalizeRepo(repo, "repo") };
+	};
+}
+
 export interface IsolatedSurface {
 	/** Dry run of execute: validates and resolves without durable state or Herdr calls. */
-	plan(request: ExecuteRequest, signal: AbortSignal | undefined, ctx: ExtensionContext): Promise<ReturnType<typeof formatExecutePlan>>;
-	execute(request: ExecuteRequest, signal: AbortSignal | undefined, ctx: ExtensionContext): Promise<ReturnType<typeof toolResult>>;
+	/** `repo` selects a Repository target below the Pi working directory. */
+	plan(request: ExecuteRequest, signal: AbortSignal | undefined, ctx: ExtensionContext, repo?: string): Promise<ReturnType<typeof formatExecutePlan>>;
+	execute(request: ExecuteRequest, signal: AbortSignal | undefined, ctx: ExtensionContext, repo?: string): Promise<ReturnType<typeof toolResult>>;
 	inventory(cwd: string, current?: () => boolean): Promise<IsolatedInventory>;
 	recover(cwd: string): Promise<string>;
 	prunePlan(cwd: string): Promise<PrunePlan>;
@@ -587,14 +612,20 @@ export function registerIsolatedExtension(pi: ExtensionAPI, options: RegisterIso
 			}
 		},
 	});
-	const lookupRoot = async (cwd: string, signal?: AbortSignal): Promise<string> => {
+	/** The canonical checkout root: the Repository target `repo` below `cwd`, or the checkout that contains `cwd`. */
+	const lookupRoot = async (cwd: string, signal?: AbortSignal, repo?: string): Promise<string> => {
 		const startedAt = Date.now();
 		const context: OperationContext = {
 			signal: signal ?? new AbortController().signal,
 			timeoutMs: LOOKUP_ROOT_TIMEOUT_MS,
 			deadline: startedAt + LOOKUP_ROOT_TIMEOUT_MS,
 		};
-		return await getComponents().resolveRoot(cwd, context);
+		if (repo === undefined) return await getComponents().resolveRoot(cwd, context);
+		const target = (await resolveRepoTarget(cwd, repo, { signal: context.signal, timeoutMs: LOOKUP_ROOT_TIMEOUT_MS })).root;
+		const root = await getComponents().resolveRoot(target, context);
+		// The checkout can change between two Git probes. Use only the root that the target validation proved.
+		if (root !== target) throw new Error(`Repository target ${repo} resolved to ${target}, but Git now reports ${root}. Nothing was changed; retry.`);
+		return root;
 	};
 
 	pi.on("session_start", (_event, ctx) => {
@@ -756,12 +787,12 @@ export function registerIsolatedExtension(pi: ExtensionAPI, options: RegisterIso
 		name: "subagent_status",
 		label: "Subagent status",
 		description: "Read one durable isolated request without reconciling or changing resources.",
-		parameters: IdOnlySchema,
-		prepareArguments: parseIdOnly,
+		parameters: withRepo(IdOnlySchema),
+		prepareArguments: parseWithRepo(parseIdOnly),
 		outputSchema: StatusOutputSchema,
 		async execute(_toolCallId, params, signal, _onUpdate, ctx) {
 			latestCtx = ctx;
-			const root = await lookupRoot(ctx.cwd, signal);
+			const root = await lookupRoot(ctx.cwd, signal, params.repo);
 			const response = await getComponents().runner.status(params.id, root, signal);
 			const result = toolResult(response, ctx, workspaceRowsByRequest);
 			const content = [{ type: "text" as const, text: `${result.content[0]!.text}${failedReviewText(response.state)}` }];
@@ -773,12 +804,12 @@ export function registerIsolatedExtension(pi: ExtensionAPI, options: RegisterIso
 		name: "subagent_resume",
 		label: "Subagent resume",
 		description: "Resume one unfinished isolated request without resetting its recorded policy or correction count. For a retry that sends a same-worker correction, optional instruction (at most 32000 characters) is appended to that prompt as Main's instruction after the saved check or review failure; use it to name the exact fixes, including the review findings the worker must address. Other actions reject instruction.",
-		parameters: ResumeRequestParameters,
-		prepareArguments: parseResumeRequest,
+		parameters: withRepo(ResumeRequestParameters),
+		prepareArguments: parseWithRepo(parseResumeRequest),
 		exposure: "model-only",
-		async execute(_toolCallId, params, signal, _onUpdate, ctx) {
+		async execute(_toolCallId, { repo, ...params }, signal, _onUpdate, ctx) {
 			latestCtx = ctx;
-			const root = await lookupRoot(ctx.cwd, signal);
+			const root = await lookupRoot(ctx.cwd, signal, repo);
 			return await startInSession(params.id, root, signal, ctx,
 				(state) => state.recovery?.kind === "resume" && state.recovery.action === params.action
 					&& (!("taskId" in params) || state.recovery.taskId === params.taskId),
@@ -789,12 +820,12 @@ export function registerIsolatedExtension(pi: ExtensionAPI, options: RegisterIso
 		name: "subagent_stage",
 		label: "Subagent stage",
 		description: "Main stages/resolves an exact candidate, or rejects/revises one. Rejection of a staged candidate freezes the old generation; explicitly restage chosen candidates in a new generation. Never writes Main.",
-		parameters: StageRequestSchema,
-		prepareArguments: parseStageRequest,
+		parameters: withRepo(StageRequestSchema),
+		prepareArguments: parseWithRepo(parseStageRequest),
 		exposure: "model-only",
-		async execute(_toolCallId, params, signal, _onUpdate, ctx) {
+		async execute(_toolCallId, { repo, ...params }, signal, _onUpdate, ctx) {
 			latestCtx = ctx;
-			const root = await lookupRoot(ctx.cwd, signal);
+			const root = await lookupRoot(ctx.cwd, signal, repo);
 			return toolResult(await getComponents().runner.stage(params, root, signal), ctx, workspaceRowsByRequest);
 		},
 	});
@@ -802,12 +833,12 @@ export function registerIsolatedExtension(pi: ExtensionAPI, options: RegisterIso
 		name: "subagent_integrate",
 		label: "Subagent integrate",
 		description: "Main advances staged dependents, refreshes after clean Main drift or evidence-less validation failure, validates in the background, corrects, promotes, reconciles interrupted validation/promotion, cleans up promoted resources, or explicitly releases rejected/superseded owned resources. Never replays an uncertain mutation.",
-		parameters: IntegrationActionParameters,
-		prepareArguments: parseIntegrationAction,
+		parameters: withRepo(IntegrationActionParameters),
+		prepareArguments: parseWithRepo(parseIntegrationAction),
 		exposure: "model-only",
-		async execute(_toolCallId, params, signal, _onUpdate, ctx) {
+		async execute(_toolCallId, { repo, ...params }, signal, _onUpdate, ctx) {
 			latestCtx = ctx;
-			const root = await lookupRoot(ctx.cwd, signal);
+			const root = await lookupRoot(ctx.cwd, signal, repo);
 			if (params.action === "validate") {
 				return await startInSession(params.id, root, signal, ctx,
 					(state) => {
@@ -830,18 +861,87 @@ export function registerIsolatedExtension(pi: ExtensionAPI, options: RegisterIso
 		name: "subagent_abort",
 		label: "Subagent abort",
 		description: "Abort an isolated request; reject and release retained candidates and integration checkouts first unless their checkouts and branches are proved absent. Terminate only exact owned workers. Repeat abort to reconcile cleanup of unchanged allocations; preserve dirty or committed work.",
-		parameters: IdOnlySchema,
-		prepareArguments: parseIdOnly,
+		parameters: withRepo(IdOnlySchema),
+		prepareArguments: parseWithRepo(parseIdOnly),
 		exposure: "model-only",
 		async execute(_toolCallId, params, signal, _onUpdate, ctx) {
 			latestCtx = ctx;
-			const root = await lookupRoot(ctx.cwd, signal);
+			const root = await lookupRoot(ctx.cwd, signal, params.repo);
 			return toolResult(await getComponents().runner.abort(params.id, root, signal), ctx, workspaceRowsByRequest);
 		},
 	});
+	/** Recovery report lines for one canonical checkout root. */
+	const recoveryLines = async (root: string): Promise<string[]> => {
+		const { requests, invalidIds, leaseBusy } = await getComponents().runner.recoverRepository(root);
+		const lines = [
+			`Pi Subagent recovery in ${root}: ${leaseBusy ? "productive lease is live; no state changed" : "orphaned interruptions classified; no work replayed"}.`,
+			...(requests.length ? requests.map((response) => {
+				const state = response.state;
+				const blockers = state.tasks.flatMap((task) => [
+					...(task.failure ? [`${task.taskId}: ${boundedPublicText(task.failure)}`] : []),
+					...(task.kind === "changeset" && task.attempts.some((attempt) => attempt.prompts.some((prompt) => prompt.status === "ambiguous"))
+						? [`${task.taskId}: ambiguous worker prompt; do not replay`] : []),
+				]);
+				const generation = state.integration.generations.at(-1);
+				const readyCandidates = state.integration.candidates.filter((candidate) => candidate.worker === "retained" && !candidate.decision);
+				return [
+					`${state.request.id}: ${state.status}; Main ${response.main?.status ?? "not checked"}.`,
+					...blockers.map((blocker) => `  Blocker: ${blocker}`),
+					...(state.final.failure ? [`  Final blocker: ${boundedPublicText(state.final.failure)}`] : []),
+					...(generation?.failure ? [`  Integration blocker: ${boundedPublicText(generation.failure)}`] : []),
+					...(state.status !== "completed" && readyCandidates.length ? [`  ${readyCandidates.length} retained candidate(s); Main selects exact candidates with subagent_stage after subagent_status.`] : []),
+					...(state.status === "completed" ? ["  Retained resources after completion; inspect subagent_status for guarded cleanup."] : []),
+					...(generation ? [`  Generation ${generation.number}: ${generation.status}; inspect subagent_status before any subagent_integrate action.`] : []),
+					...(!leaseBusy && response.continuation ? [`  Reported next action: subagent_resume ${JSON.stringify(response.continuation)}.`] : []),
+				].join("\n");
+		}) : ["No unfinished or retained isolated requests."]),
+		...(invalidIds.length ? [`Unreadable state IDs (preserved; inspect with their compatible owner): ${invalidIds.map((id) => JSON.stringify(id)).join(", ")}.`] : []),
+		leaseBusy ? "Wait for the active productive run; use subagent_status to inspect its current state. No work was taken over."
+			: "Main: inspect subagent_status for exact identities and blockers before deciding stage, promote, resume, or guarded release. No worker prompt, merge, promotion, or cleanup was replayed.",
+		];
+		return lines;
+	};
+	/** Report lines for discovery issues and truncation, because an incomplete search cannot prove absence. */
+	const discoveryWarnings = (found: RepoDiscovery): string[] => [
+		...(found.truncated ? [`Repository discovery below ${found.base} stopped at a limit; some repositories were not examined.`] : []),
+		...found.issues.slice(0, 20).map(({ path, reason }) => `Repository discovery could not examine ${path}: ${boundedPublicText(reason)}`),
+		...(found.issues.length > 20 ? [`${found.issues.length - 20} more repository discovery issues omitted.`] : []),
+	];
+	/** Read-only inventory across the Repository targets below a parent directory that is not a Git repository. */
+	const childInventory = async (cwd: string, current: () => boolean = () => true): Promise<IsolatedInventory> => {
+		const found = await discoverRepos(cwd);
+		const requests: IsolatedRequest[] = [];
+		const invalidIds: string[] = [];
+		const selectorOf = (root: string) => found.repos.find((item) => item.root === root)?.repo
+			?? (isWithin(found.base, root) ? relative(found.base, root).split(sep).join("/") : root);
+		for (const { repo, root } of found.repos) {
+			if (!current()) throw new Error("Session or branch changed; reopen /subagent.");
+			const listed = await getComponents().runner.listRequests(root);
+			const leaseLive = await getComponents().runner.hasProductiveRunLease(root);
+			for (const request of listed.requests) requests.push({ ...request, root: request.root ?? root, repo, leaseLive, checkout: root });
+			invalidIds.push(...listed.invalidIds.map((id) => `${repo}/${id}`));
+		}
+		// One scan of the whole state store. An orphan's primary checkout is live, so Git commands run there.
+		const orphans = await getComponents().runner.listAllOrphanRequests();
+		for (const { primary, ...request } of orphans.requests) {
+			if (!isWithin(found.base, primary)) continue;
+			requests.push({ ...request, repo: selectorOf(primary), leaseLive: false, checkout: primary });
+		}
+		invalidIds.push(...orphans.invalidIds);
+		return { root: found.base, leaseLive: requests.some((request) => request.leaseLive), requests,
+			invalidIds: [...new Set(invalidIds)], warnings: discoveryWarnings(found) };
+	};
 	return {
 		async inventory(cwd, current) {
-			const root = await lookupRoot(cwd);
+			let root: string;
+			try {
+				root = await lookupRoot(cwd);
+			} catch (error) {
+				// Outside a Git repository, list the requests of each Repository target below cwd.
+				// Any other failure, such as a Git timeout, stays a failure.
+				if (await gitTopLevel(cwd).then((top) => top !== undefined, () => true)) throw error;
+				return await childInventory(cwd, current);
+			}
 			const revision = savedRevision;
 			const { requests, invalidIds, states } = await getComponents().runner.listRequests(root);
 			if (current?.() && !sessionClosed && revision === savedRevision) {
@@ -858,44 +958,42 @@ export function registerIsolatedExtension(pi: ExtensionAPI, options: RegisterIso
 			return { root, leaseLive, requests: [...requests, ...orphans.requests], invalidIds: [...new Set([...invalidIds, ...orphans.invalidIds])] };
 		},
 		async recover(cwd) {
-			const root = await lookupRoot(cwd);
-			const { requests, invalidIds, leaseBusy } = await getComponents().runner.recoverRepository(root);
-			const lines = [
-				`Pi Subagent recovery in ${root}: ${leaseBusy ? "productive lease is live; no state changed" : "orphaned interruptions classified; no work replayed"}.`,
-				...(requests.length ? requests.map((response) => {
-					const state = response.state;
-					const blockers = state.tasks.flatMap((task) => [
-						...(task.failure ? [`${task.taskId}: ${boundedPublicText(task.failure)}`] : []),
-						...(task.kind === "changeset" && task.attempts.some((attempt) => attempt.prompts.some((prompt) => prompt.status === "ambiguous"))
-							? [`${task.taskId}: ambiguous worker prompt; do not replay`] : []),
-					]);
-					const generation = state.integration.generations.at(-1);
-					const readyCandidates = state.integration.candidates.filter((candidate) => candidate.worker === "retained" && !candidate.decision);
-					return [
-						`${state.request.id}: ${state.status}; Main ${response.main?.status ?? "not checked"}.`,
-						...blockers.map((blocker) => `  Blocker: ${blocker}`),
-						...(state.final.failure ? [`  Final blocker: ${boundedPublicText(state.final.failure)}`] : []),
-						...(generation?.failure ? [`  Integration blocker: ${boundedPublicText(generation.failure)}`] : []),
-						...(state.status !== "completed" && readyCandidates.length ? [`  ${readyCandidates.length} retained candidate(s); Main selects exact candidates with subagent_stage after subagent_status.`] : []),
-						...(state.status === "completed" ? ["  Retained resources after completion; inspect subagent_status for guarded cleanup."] : []),
-						...(generation ? [`  Generation ${generation.number}: ${generation.status}; inspect subagent_status before any subagent_integrate action.`] : []),
-						...(!leaseBusy && response.continuation ? [`  Reported next action: subagent_resume ${JSON.stringify(response.continuation)}.`] : []),
-					].join("\n");
-			}) : ["No unfinished or retained isolated requests."]),
-			...(invalidIds.length ? [`Unreadable state IDs (preserved; inspect with their compatible owner): ${invalidIds.map((id) => JSON.stringify(id)).join(", ")}.`] : []),
-			leaseBusy ? "Wait for the active productive run; use subagent_status to inspect its current state. No work was taken over."
-				: "Main: inspect subagent_status for exact identities and blockers before deciding stage, promote, resume, or guarded release. No worker prompt, merge, promotion, or cleanup was replayed.",
-			];
-			return boundedReport(lines, "recovery report lines omitted; use subagent_status for exact request evidence.");
+			let root: string;
+			try {
+				root = await lookupRoot(cwd);
+			} catch (error) {
+				if (await gitTopLevel(cwd).then((top) => top !== undefined, () => true)) throw error;
+				// Outside a Git repository, recover each Repository target that has saved requests.
+				const found = await discoverRepos(cwd);
+				const lines: string[] = [];
+				for (const { repo, root: child } of found.repos) {
+					const listed = await getComponents().runner.listRequests(child);
+					if (!listed.requests.length && !listed.invalidIds.length) continue;
+					lines.push(`repo ${repo}:`, ...await recoveryLines(child));
+				}
+				const warnings = discoveryWarnings(found);
+				// An incomplete discovery is not proof that no request exists.
+				if (!lines.length) lines.push(warnings.length ? `No isolated requests in the ${found.repos.length} repositories that discovery examined below ${found.base}.`
+					: `No isolated requests in the ${found.repos.length} repositories below ${found.base}.`);
+				lines.push(...warnings);
+				return boundedReport(lines, "recovery report lines omitted; use subagent_status for exact request evidence.");
+			}
+			return boundedReport(await recoveryLines(root), "recovery report lines omitted; use subagent_status for exact request evidence.");
 		},
 		async discardPlan(cwd, request) {
-			return await getComponents().runner.discardPlan(cwd, request.id, request.directory, {
+			// A request listed from a parent directory runs Git in a live checkout of its own repository.
+			if (request.checkout !== undefined) cwd = request.checkout;
+			const plan = await getComponents().runner.discardPlan(cwd, request.id, request.directory, {
 				panes: () => listHerdrPanes(cwd), current: () => !sessionClosed,
 				blocked: async () => jobOwners.has(`${request.root}\0${request.id}`) ? "A local job is active for this request." : undefined,
 			});
+			return request.checkout === undefined ? plan : { ...plan, checkout: request.checkout };
 		},
 		async discard(cwd, plan, current) {
 			requireCurrent(current);
+			// The plan keeps the live checkout that it used. The saved request root can be removed.
+			const checkout = (plan as DiscardPlan & { checkout?: string }).checkout;
+			if (checkout !== undefined) cwd = checkout;
 			const removals = await getComponents().runner.discard(cwd, plan, {
 				panes: () => listHerdrPanes(cwd), current: () => current() && !sessionClosed,
 				blocked: async () => jobOwners.has(`${plan.root}\0${plan.requestId}`) ? "A local job is active for this request." : undefined,
@@ -937,21 +1035,25 @@ export function registerIsolatedExtension(pi: ExtensionAPI, options: RegisterIso
 			requireCurrent(current);
 			return getComponents().runner.drainFollowups(root, requestId, taskId);
 		},
-		async plan(request, signal, ctx) {
+		async plan(request, signal, ctx, repo) {
 			latestCtx = ctx;
 			latestContext();
-			const root = await lookupRoot(ctx.cwd, signal);
+			const root = await lookupRoot(ctx.cwd, signal, repo);
 			if (jobOwners.has(`${root}\0${request.id}`)) throw new Error(`Pi Subagent request ${request.id} is already active in this session runtime.`);
-			return formatExecutePlan(await getComponents().runner.plan(request, ctx.cwd, signal), false);
+			const cwd = repo === undefined ? ctx.cwd : root;
+			return formatExecutePlan(await (repo === undefined ? getComponents().runner.plan(request, cwd, signal) : getComponents().runner.plan(request, cwd, signal, { targeted: true })), false);
 		},
-		async execute(request, signal, ctx) {
+		async execute(request, signal, ctx, repo) {
 			latestCtx = ctx;
 			latestContext();
-			const root = await lookupRoot(ctx.cwd, signal);
+			const root = await lookupRoot(ctx.cwd, signal, repo);
+			// The runner resolves the same root again from this cwd. A Repository target is its own root.
+			const cwd = repo === undefined ? ctx.cwd : root;
 			return await startInSession(request.id, root, signal, ctx,
 				(state) => state.status === "pending" && state.createdAt === state.updatedAt
 					&& state.tasks.every((task) => task.status === "pending" && task.attempts.length === 0),
-				(runSignal) => getComponents().runner.execute(request, ctx.cwd, runSignal));
+				(runSignal) => repo === undefined ? getComponents().runner.execute(request, cwd, runSignal)
+					: getComponents().runner.execute(request, cwd, runSignal, { targeted: true }));
 		},
 	};
 }

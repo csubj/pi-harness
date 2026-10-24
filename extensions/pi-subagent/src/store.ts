@@ -291,12 +291,18 @@ export class FileRunStore {
 		try { return await operation(); } finally { await release(); }
 	}
 
-	/** Missing roots only; repoRoot records the stable primary checkout, not the removed parent. */
-	async listOrphans(primary: string): Promise<{ states: RunStateHandle[]; invalidIds: string[] }> {
+	/**
+	 * Missing roots only; repoRoot records the stable primary checkout, not the removed parent.
+	 * Without `primary`, return the orphans of every primary checkout, each with its primary.
+	 */
+	async listOrphans(primary: string): Promise<{ states: RunStateHandle[]; invalidIds: string[] }>;
+	async listOrphans(primary?: undefined): Promise<{ states: RunStateHandle[]; invalidIds: string[]; primaries: Map<RunStateHandle, string> }>;
+	async listOrphans(primary?: string): Promise<{ states: RunStateHandle[]; invalidIds: string[]; primaries?: Map<RunStateHandle, string> }> {
+		const primaries = new Map<RunStateHandle, string>();
 		const parent = join(extensionConfigDir("pi-subagent", this.agentDir), "state");
 		let directories;
 		try { directories = await readdir(parent, { withFileTypes: true }); }
-		catch (error) { if (isMissing(error)) return { states: [], invalidIds: [] }; throw error; }
+		catch (error) { if (isMissing(error)) return { states: [], invalidIds: [], ...(primary === undefined ? { primaries } : {}) }; throw error; }
 		const states: RunStateHandle[] = [];
 		const invalidIds: string[] = [];
 		for (const entry of directories) {
@@ -313,13 +319,16 @@ export class FileRunStore {
 						try { await lstat(handle.state.root); live = true; break; }
 						catch (error) { if (!isMissing(error)) throw error; }
 						const worktrees = discardResources(handle.state).flatMap((resource) => resource.worktree ? [resource.worktree] : []);
-						if (worktrees.length && worktrees.every((item) => item.repoRoot === primary)) states.push(handle);
+						const owner = worktrees[0]?.repoRoot;
+						if (owner === undefined || !worktrees.every((item) => item.repoRoot === owner)) continue;
+						if (primary === undefined) { primaries.set(handle, owner); states.push(handle); }
+						else if (owner === primary) states.push(handle);
 					} catch { invalid.push(join(directory, file)); }
 				}
 				if (!live) invalidIds.push(...invalid);
 			} catch { invalidIds.push(directory); }
 		}
-		return { states, invalidIds };
+		return { states, invalidIds, ...(primary === undefined ? { primaries } : {}) };
 	}
 
 	private async stateEntries(root: string) {

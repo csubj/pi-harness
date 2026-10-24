@@ -46,7 +46,7 @@ export interface LaunchRuntimeOptions {
 	pi: LaunchPi;
 	context(): ExtensionContext;
 	resolveRoot(cwd: string, context: OperationContext): Promise<string>;
-	preflightHost?(input: { request: ExecuteRequest; cwd: string; root: string }, context: OperationContext): Promise<void>;
+	preflightHost?(input: { request: ExecuteRequest; cwd: string; root: string; targeted?: boolean }, context: OperationContext): Promise<void>;
 	inspectMainBase(input: { root: string }, context: OperationContext): Promise<WorkspaceIdentity>;
 	now?: () => number;
 	randomToken?: () => string;
@@ -183,7 +183,7 @@ export class RoleLaunchRuntime implements CoordinatorRuntime {
 		});
 	}
 
-	async preflight(input: { request: ExecuteRequest; cwd: string; dryRun?: boolean }, context: OperationContext): Promise<{
+	async preflight(input: { request: ExecuteRequest; cwd: string; dryRun?: boolean; targeted?: boolean }, context: OperationContext): Promise<{
 		root: string;
 		main: WorkspaceIdentity;
 		routes: ResolvedRoute[];
@@ -195,11 +195,13 @@ export class RoleLaunchRuntime implements CoordinatorRuntime {
 		}
 		const root = await realpath(resolvedRoot);
 		if (root !== resolvedRoot) throw new Error("Pi Subagent root resolver returned a non-canonical path.");
+		// A Repository target must still be its own Git top-level directory before the host gate runs.
+		if (input.targeted && root !== await realpath(input.cwd)) throw new Error(`Repository target ${input.cwd} now resolves to ${root}; nothing was saved. Retry the request.`);
 		const rootInfo = await lstat(root);
 		if (!rootInfo.isDirectory()) throw new Error("Pi Subagent root must be an existing local directory.");
 		context.signal?.throwIfAborted();
 		if (!input.dryRun && input.request.tasks.some((task) => task.kind === "changeset")) {
-			await this.options.preflightHost?.({ request: input.request, cwd: input.cwd, root }, context);
+			await this.options.preflightHost?.({ request: input.request, cwd: input.cwd, root, ...(input.targeted ? { targeted: true } : {}) }, context);
 		}
 		const main = await this.options.inspectMainBase({ root }, context);
 		const required = new Map<string, Set<ModelClass>>();
