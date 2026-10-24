@@ -35,7 +35,7 @@ const ContinueFromSchema = Type.String({ pattern: "^D[1-9][0-9]*\\.[1-9][0-9]*$"
 
 const RepoSchema = Type.String({
 	minLength: 1,
-	description: "Optional Repository target: a child Git repository as a path relative to the Pi working directory, such as team/service. The worker runs there, and admission reserves that checkout. A task value overrides the request value. Omit it to use the Pi working directory. Use subagent_repos to list targets.",
+	description: "Optional Repository target: a child Git repository as a path relative to the Pi working directory, such as team/service. Direct workers run there, and admission reserves that checkout; a direct task value overrides the request value. Mode isolated accepts it only on the request, and the whole graph, its state, and its promotion use that repository. Omit it to use the Pi working directory. Use subagent_repos to list targets.",
 });
 
 const PathsSchema = Type.Array(Type.String({ minLength: 1 }), {
@@ -94,7 +94,8 @@ export type ParsedWorkflow =
 	| { mode: "single"; delegations: [Delegation] }
 	| { mode: "parallel"; delegations: Delegation[] }
 	| { mode: "chain"; delegations: Delegation[] };
-export type ParsedDelegateTask = ({ mode: "direct"; workflow: ParsedWorkflow } | { mode: "isolated"; request: ExecuteRequest }) & { dryRun: boolean };
+/** An isolated `repo` selects the one Repository target of the whole graph. It is not part of the durable request. */
+export type ParsedDelegateTask = ({ mode: "direct"; workflow: ParsedWorkflow } | { mode: "isolated"; request: ExecuteRequest; repo?: string }) & { dryRun: boolean };
 
 type DirectInput = Static<typeof DirectWorkflowSchema>;
 const DELEGATION_KEYS = ["role", "name", "task", "access", "paths", "continueFrom", "kind", "model", "modelClass"] as const;
@@ -207,8 +208,10 @@ export function parseDelegateTask(value: unknown): ParsedDelegateTask {
 		value = rest;
 	}
 	if (value && typeof value === "object" && !Array.isArray(value) && (value as { mode?: unknown }).mode === "isolated") {
-		if (Object.hasOwn(value, "repo")) throw new Error("mode isolated does not accept repo yet. Start Pi in the repository, or use mode direct.");
-		return { mode: "isolated", request: parseExecuteRequest(value), dryRun };
+		const { repo, ...request } = value as Record<string, unknown>;
+		if (repo === undefined) return { mode: "isolated", request: parseExecuteRequest(request), dryRun };
+		if (typeof repo !== "string") throw new Error("repo must be a relative path.");
+		return { mode: "isolated", request: parseExecuteRequest(request), repo: normalizeRepo(repo, "repo"), dryRun };
 	}
 	return { mode: "direct", workflow: parseWorkflow(value), dryRun };
 }

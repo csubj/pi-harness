@@ -3452,3 +3452,13 @@ test("discard closes all reviewed workers before deleting any checkout", async (
 	assert.ok(results.every((item) => item.outcome === "removed"), JSON.stringify(results));
 	assert.equal((await runner.listRequests(root)).requests[0]!.status, "aborted");
 });
+
+test("a targeted plan and execute tell preflight that the caller selected a Repository target", async (t) => {
+	const { root, runtime, runner } = await harness(t);
+	const inputs: Array<Parameters<CoordinatorRuntime["preflight"]>[0]> = [];
+	const preflight = runtime.preflight.bind(runtime);
+	runtime.preflight = async (input, context) => { inputs.push(input); return await preflight(input, context); };
+	await runner.plan(request("targeted", [textTask("text")]), root, undefined, { targeted: true });
+	await runner.plan(request("untargeted", [textTask("text")]), root);
+	assert.deepEqual(inputs.map(({ targeted }) => targeted), [true, undefined]);
+});

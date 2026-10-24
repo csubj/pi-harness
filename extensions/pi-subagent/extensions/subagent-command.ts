@@ -50,6 +50,10 @@ export interface IsolatedRequest {
 	/** Saved state address for a removed parent checkout. */
 	directory?: string;
 	root?: string;
+	/** The Repository target selector, when /subagent runs in a parent directory of repositories. */
+	repo?: string;
+	/** The productive lease state of this request's root, when the inventory spans several roots. */
+	leaseLive?: boolean;
 	orphaned?: boolean;
 	name: string;
 	status: string;
@@ -192,7 +196,7 @@ const summary = (text: string, max = 60): string => {
 	return chars.length > max ? `${chars.slice(0, max - 1).join("")}…` : chars.join("");
 };
 // Identity and status first so clipping cuts only the goal summary.
-const isolatedLabel = ({ id, status, name }: IsolatedRequest): string => `${id} · ${status} · ${summary(name)}`;
+const isolatedLabel = ({ id, repo, status, name }: IsolatedRequest): string => `${id}${repo ? ` · repo ${repo}` : ""} · ${status} · ${summary(name)}`;
 const completed = (status: string) => [...TERMINAL_RUN_STATUSES, "success", "failed", "failure", "integrated"].includes(status);
 const priority = (status: string) => /attention|blocked|retained|failed/i.test(status) ? 0 : completed(status) ? 2 : 1;
 // Recorded-only and unverified work is uncertain, not active.
@@ -310,7 +314,7 @@ export function workingReport(direct: readonly DirectTask[], inventory: Isolated
 	}
 	for (const request of inventory?.requests ?? []) {
 		const active = !request.orphaned && ["pending", "running"].includes(request.status);
-		if (active && inventory!.leaseLive) working.push({ text: isolatedLabel(request) });
+		if (active && (request.leaseLive ?? inventory!.leaseLive)) working.push({ text: isolatedLabel(request) });
 		else if (active) attention.push({ text: `${isolatedLabel(request)} · interrupted; run /subagent recover` });
 		else if (request.status === "needs_attention" || /retained/.test(request.status)) attention.push({ text: isolatedLabel(request) });
 		else if (request.orphaned && /unverified/.test(request.status)) unverified.push({ text: isolatedLabel(request) });
@@ -565,7 +569,7 @@ export function registerSubagentCommand(pi: ExtensionAPI, adapter: SubagentComma
 					items.length ? [{ label: `── ${title} (${items.length}) ──`, value: { kind: "refresh" } },
 						...[...items].sort((a, b) => priority(a.status) - priority(b.status)).map(choice)] : [];
 				const requests = (inventory?.requests ?? []).filter((request) => history || !completed(request.status) || /retained/i.test(request.status));
-				const isolatedChoice = (request: IsolatedRequest): Choice<Selection> => ({ label: `  ${glyph(request.status)} ${isolatedLabel(request)}`, value: { kind: "isolated", request, root: inventory!.root } });
+				const isolatedChoice = (request: IsolatedRequest): Choice<Selection> => ({ label: `  ${glyph(request.status)} ${isolatedLabel(request)}`, value: { kind: "isolated", request, root: request.root ?? inventory!.root } });
 				// One row per workflow; new records keep opaque IDs in details. Status is last so clipping preserves the reference.
 				const directChoice = (task: DirectTask): Choice<Selection> => ({ label: `  ${glyph(task.status)} ${directLabel(task)} · ${task.status}${costSuffix(task.cost)}${task.workers.length || task.name === task.id ? "" : ` · ${task.id}`}`, value: { kind: "direct", task } });
 				const groups = [

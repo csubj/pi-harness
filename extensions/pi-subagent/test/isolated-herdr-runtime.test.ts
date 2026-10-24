@@ -587,6 +587,26 @@ test("preflight accepts linked Main only after Herdr capabilities and current-wo
 	}
 });
 
+test("targeted preflight accepts a caller workspace of another checkout but still checks the target repository", async (t) => {
+	const fixture = await paths(t);
+	for (const worktree of [{ checkout_path: fixture.worktree, repo_key: fixture.root, repo_root: fixture.root }, null] as const) {
+		const script = new ScriptedProcess();
+		const steps = preflightSteps(fixture);
+		steps[5]!.result = worktree === null ? success({ type: "workspace_info", workspace: { workspace_id: "workspace-current", worktree: null } })
+			: currentWorkspaceResult(fixture, worktree);
+		script.push(...steps);
+		await runtime(fixture, script).preflightHost({ root: fixture.root, targeted: true }, context());
+		script.done();
+		assert.equal(script.calls.at(-1)!.command, "git");
+	}
+	const failing = new ScriptedProcess();
+	const steps = preflightSteps(fixture);
+	steps[5]!.result = currentWorkspaceResult(fixture, { checkout_path: fixture.worktree });
+	steps[6]!.result = { code: 1, stdout: "", stderr: "failure" };
+	failing.push(...steps);
+	await assert.rejects(runtime(fixture, failing).preflightHost({ root: fixture.root, targeted: true }, context()), /identity probe failed/);
+});
+
 test("preflight fails closed on mismatched Herdr and Git repository identity", async (t) => {
 	const fixture = await paths(t);
 	for (const [name, mutate, error, expectsGit] of [

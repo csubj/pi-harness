@@ -189,8 +189,11 @@ export async function withTransientLaunch<Launch extends VerifiedLaunch, Result>
 export interface CoordinatorRuntime {
 	now(): number;
 	randomToken(): string;
-	/** `dryRun` skips checks that call Herdr; every other check runs. */
-	preflight(input: { request: ExecuteRequest; cwd: string; dryRun?: boolean }, context: OperationContext): Promise<{
+	/**
+	 * `dryRun` skips checks that call Herdr; every other check runs.
+	 * `targeted` means that `cwd` is a Repository target, so the caller's Herdr workspace can belong to another checkout.
+	 */
+	preflight(input: { request: ExecuteRequest; cwd: string; dryRun?: boolean; targeted?: boolean }, context: OperationContext): Promise<{
 		root: string;
 		main: WorkspaceIdentity;
 		/** Resolved route of each distinct Role and model class, when the coordinator reports it. */
@@ -1161,11 +1164,13 @@ export class IsolatedRunner {
 	}
 
 	/** Every execute check before durable state; a dry run also skips the Herdr host preflight. */
-	private async admitExecute(value: unknown, cwd: string, scope: RuntimeScope, dryRun: boolean) {
+	private async admitExecute(value: unknown, cwd: string, scope: RuntimeScope, dryRun: boolean, targeted: boolean) {
 		const request = parseExecuteRequest(value);
 		const policy = Object.freeze({ ...this.currentPolicy() });
 		const canonicalCwd = realpathSync.native(cwd);
-		const prepared = await scope.call(async (context) => await this.coordinatorRuntime.preflight({ request, cwd: canonicalCwd, ...(dryRun ? { dryRun } : {}) }, context));
+		const prepared = await scope.call(async (context) => await this.coordinatorRuntime.preflight({
+			request, cwd: canonicalCwd, ...(dryRun ? { dryRun } : {}), ...(targeted ? { targeted } : {}),
+		}, context));
 		const root = realpathSync.native(prepared.root);
 		if (root !== prepared.root) throw new Error("Preflight repository root must be canonical.");
 		let fullSuite: AdmittedFullSuite | undefined;
@@ -1190,14 +1195,15 @@ export class IsolatedRunner {
 	}
 
 	/** Dry run of execute: no state, lock, lease, worktree, or Herdr call. */
-	async plan(value: unknown, cwd: string, outerSignal?: AbortSignal): Promise<ExecutePlan> {
-		const { request, root, preparedMain, routes, fullSuite } = await this.admitExecute(value, cwd, new ProductiveScope(outerSignal), true);
+	/** `options.targeted` marks `cwd` as a Repository target that the caller selected with `repo`. */
+	async plan(value: unknown, cwd: string, outerSignal?: AbortSignal, options: { targeted?: boolean } = {}): Promise<ExecutePlan> {
+		const { request, root, preparedMain, routes, fullSuite } = await this.admitExecute(value, cwd, new ProductiveScope(outerSignal), true, options.targeted === true);
 		return { request, root, main: preparedMain, routes, ...(fullSuite ? { fullSuite } : {}) };
 	}
 
-	async execute(value: unknown, cwd: string, outerSignal?: AbortSignal): Promise<RunResponse> {
+	async execute(value: unknown, cwd: string, outerSignal?: AbortSignal, options: { targeted?: boolean } = {}): Promise<RunResponse> {
 		const scope = new ProductiveScope(outerSignal);
-		const { request, policy, root, preparedMain, fullSuite } = await this.admitExecute(value, cwd, scope, false);
+		const { request, policy, root, preparedMain, fullSuite } = await this.admitExecute(value, cwd, scope, false, options.targeted === true);
 		return await this.withProductiveRun(root, async (lifecycle) => {
 			const createdAt = this.coordinatorRuntime.now();
 			const state: RunState = {

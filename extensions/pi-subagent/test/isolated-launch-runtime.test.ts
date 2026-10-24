@@ -181,6 +181,7 @@ async function harness(t: test.TestContext) {
 	const resolvedCwds: string[] = [];
 	const inspectedRoots: string[] = [];
 	const preflightOrder: string[] = [];
+	const hostTargets: Array<boolean | undefined> = [];
 	let resolvedRoot: string | undefined;
 	const runtime = new RoleLaunchRuntime({
 		pi,
@@ -190,7 +191,7 @@ async function harness(t: test.TestContext) {
 			resolvedCwds.push(cwd);
 			return resolvedRoot ?? await realpath(root);
 		},
-		preflightHost: async () => { preflightOrder.push("host"); },
+		preflightHost: async ({ targeted }) => { preflightOrder.push("host"); hostTargets.push(targeted); },
 		inspectMainBase: async ({ root: inspected }) => {
 			preflightOrder.push("main");
 			inspectedRoots.push(inspected);
@@ -209,6 +210,7 @@ async function harness(t: test.TestContext) {
 		resolvedCwds,
 		inspectedRoots,
 		preflightOrder,
+		hostTargets,
 		roleLaunchResolutions: () => roleLaunchResolutions,
 		setResolvedRoot: (value: string) => { resolvedRoot = value; },
 		setRole,
@@ -371,4 +373,13 @@ test("acquireLaunch accepts arbitrary Role names and re-resolves changed configu
 	} finally {
 		await handle.cleanup();
 	}
+});
+
+test("preflight passes a Repository target flag to the host gate", async (t) => {
+	const fixture = await harness(t);
+	await fixture.setRole("author.md", { name: "change author" });
+	const changeset = request([changesetTask("task-a", "change author", "fast")]);
+	await fixture.runtime.preflight({ request: changeset, cwd: fixture.root, targeted: true }, operationContext());
+	await fixture.runtime.preflight({ request: changeset, cwd: fixture.root }, operationContext());
+	assert.deepEqual(fixture.hostTargets, [true, undefined]);
 });

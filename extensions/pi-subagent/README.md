@@ -108,7 +108,11 @@ When Pi runs in a parent directory that holds many repositories, set `repo` to s
 
 The worker opens in the current Herdr workspace with the Repository target as its working directory. Change reports and stale-read checks use that checkout, and each result names its `repo`. A write request reserves the checkout of each target at one time, so writers in different repositories can run together. When Pi runs in a parent directory that is not a Git repository, each Main call that can write covers the whole parent. Such a call waits while a direct writer owns the checkout of any Repository target in it. Main can still read files and use `subagent_repos`.
 
-Isolated mode does not accept `repo` yet.
+An isolated request accepts one `repo` for the whole graph. Tasks cannot select another repository. The request then uses the Repository target as its checkout. State, worker worktrees, validation, and promotion belong to that repository. The Pi working directory does not change.
+
+Your Herdr workspace can belong to another checkout or to none. Herdr opens the primary workspace of the target when it opens the first worker worktree, and it does not close that workspace later. Pass the same `repo` to `subagent_status`, `subagent_resume`, `subagent_stage`, `subagent_integrate`, and `subagent_abort`.
+
+Run `/subagent` in a parent directory that is not a Git repository. It lists the isolated requests of each Repository target below it, with their `repo`. `/subagent recover` recovers each Repository target that has saved requests. `/subagent prune` still needs a Git checkout.
 
 To continue a finished worker, add `"continueFrom": "D7.1"` with the same `role`. This opens a new tab with the saved conversation and a new reference. Continue the newest reference from the original checkout and workspace. For a worker that ran with `repo`, select the same `repo`. For eligibility and stop behavior, see [Continue or stop one direct worker](./docs/orchestration.md#continue-or-stop-one-direct-worker).
 
