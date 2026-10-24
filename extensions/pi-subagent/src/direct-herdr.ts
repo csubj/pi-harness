@@ -102,6 +102,9 @@ export function exactDirectTerminalTurn(jsonl: string, prompt: string): boolean 
 }
 
 const turnSuffix = (turn: string) => `\n\nTurn identity: ${turn}`;
+/** How long to wait for Pi to retry a turn that ended with a provider error, and how many times. */
+const PROVIDER_RETRY_GRACE_MS = 65_000;
+const PROVIDER_RETRY_WAITS = 5;
 
 /** Refuse continuation unless the saved session's exact recorded turn is terminal and no later user turn exists. */
 export async function assertSettledDirectSession(sessionFile: string, turn: string): Promise<void> {
@@ -462,6 +465,26 @@ export function createDirectHerdr(pi: Pick<ExtensionAPI, "exec">, cwd: string, i
 							deadline = Date.now() + idleMs;
 						}
 					};
+					let retryWaits = 0;
+					// A provider error, such as HTTP 429, ends a turn with stopReason "error", and Pi can then retry it.
+					// Wait a bounded time for the retry before the error counts as the final answer.
+					const retryPending = async () => {
+						if (retryWaits >= PROVIDER_RETRY_WAITS) return false;
+						const info = await stat(sessionFile).catch(() => undefined);
+						if (!info || info.size > SESSION_LIMIT) return false;
+						if (exactFinalTurn(await readFile(sessionFile, "utf8"), prompt)?.stopReason !== "error") return false;
+						retryWaits += 1;
+						const args = ["agent", "wait", name, "--until", "working", "--timeout", String(PROVIDER_RETRY_GRACE_MS)];
+						const waited = await herdr.exec(args, options(signal));
+						if (waited.code !== 0 || waited.killed) {
+							if (!waited.killed && hasHerdrErrorCode(waited, "timeout")) return false;
+							throw new Error(herdrCommandFailure(args, waited));
+						}
+						current = inspect(JSON.parse(waited.stdout), "agent_info", name, paneId, tabId);
+						deadline = Date.now() + idleMs;
+						return current === "working";
+					};
+					for (;;) {
 					while (current === "working" || current === "idle") {
 						// A turn may finish before observation begins (or between waits).
 						if (current === "idle") {
@@ -487,7 +510,10 @@ export function createDirectHerdr(pi: Pick<ExtensionAPI, "exec">, cwd: string, i
 						current = next;
 					}
 					if (current !== "done") throw new Error(`Herdr agent in tab ${tabId} became ${current}; inspect it before retrying.`);
-					return readAnswer();
+					const answer = await maybeAnswer();
+					if (answer !== undefined) return answer;
+					if (!await retryPending()) return readAnswer();
+					}
 				},
 				async focus() {
 					// A reused pane ID must not receive focus: the agent identity must match the launch first.

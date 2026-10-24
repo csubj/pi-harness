@@ -2221,3 +2221,43 @@ test("herdr_command write jobs hold Main activity until their end event; read jo
 	app.emit("pi:checkout-activity:end", { jobId: "cmd-1" });
 	assert.equal(await app.call("direct-4"), undefined);
 });
+
+test("a direct worker waits for Pi to retry a turn that ended with a provider error", async () => {
+	await environment(async (agentDir) => {
+		await writeWorkerRole(agentDir);
+		await herdrEnvironment(async (cwd) => {
+			const fake = fakeHerdr(cwd, () => "answer after retry");
+			let waits = 0;
+			let lastDone: any;
+			const exec = async (args: string[]) => {
+				if (args[0] !== "agent" || args[1] !== "wait") return await fake.exec(args);
+				waits += 1;
+				if (waits === 1) {
+					// The first turn ends with HTTP 429. Pi saves it as an error turn, and Herdr reports done.
+					const response = await fake.exec(args);
+					const start = fake.calls.find(([kind, command]) => kind === "agent" && command === "start")!;
+					const sessionFile = start[start.indexOf("--session") + 1]!;
+					const lines = (await readFile(sessionFile, "utf8")).trimEnd().split("\n").map((line) => JSON.parse(line));
+					lines[2].message = { role: "assistant", content: [], stopReason: "error", errorMessage: "429 rate_limit_error" };
+					await writeFile(sessionFile, `${lines.map((line) => JSON.stringify(line)).join("\n")}\n`);
+					lastDone = JSON.parse(response.stdout);
+					return response;
+				}
+				if (args.includes("working") && !args.includes("idle")) {
+					// Pi retries after its backoff, so the agent works again.
+					const working = structuredClone(lastDone);
+					working.result.agent.agent_status = "working";
+					return { code: 0, stdout: JSON.stringify(working), stderr: "" };
+				}
+				return await fake.exec(args);
+			};
+			const app = harness({ cwd, herdr: exec });
+			app.handlers.get("session_start")?.({}, app.ctx);
+			await app.tool.execute("call", { role: "worker", name: "Check", task: "inspect", access: "read" }, undefined, undefined, app.ctx);
+			await waitFor(() => app.sentMessages.length === 1, 5_000);
+			const entry = app.sentMessages[0]!.message.details.entries[0];
+			assert.deepEqual([entry.status, entry.summary], ["succeeded", "answer after retry"]);
+			assert.equal(waits, 3);
+		});
+	});
+});
