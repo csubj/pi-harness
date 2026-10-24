@@ -57,8 +57,10 @@ annotations are unverified hints, not authorization.
 Pi 1.3 restores active tools from the session transcript on resume. A `--tools`
 list with only `+name`/`-name` entries modifies that restored selection. Plain
 names in `--tools`, `--no-tools`, or `--no-builtin-tools` select tools explicitly
-instead. Use native restoration, not a custom resume hook; keep separate
-Role or authorization restrictions.
+instead. Pi 1.4 also activates an extension tool that the branch never added or
+removed, unless the tool registers with `defaultActive: false`. Use native
+restoration, not a custom resume hook; keep separate Role or authorization
+restrictions.
 
 ## Commands and messages
 
