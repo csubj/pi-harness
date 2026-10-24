@@ -465,7 +465,7 @@ Every child launch:
 2. loads only declared resources plus required internal adapters;
 3. resolves Skill and model names from Pi's effective registries;
 4. installs an exact tool policy;
-5. excludes Main-only delegation/recovery tools and `ask_question`; and
+5. excludes Main-only delegation, integration, and recovery tools, `herdr_handoff`, and `ask_question`; and
 6. prepends the delegated-subagent identity contract.
 
 An empty `tools` list adds no base tools. Selected extension tools can still activate.
@@ -494,7 +494,7 @@ Before launch, the extension checks each selected entry against Pi's documented 
 
 The extension never modifies the file. Fix the entry or choose another server. The extension passes valid `auth`, `oauth`, and `description` fields through, so Pi's native provider auth and OAuth apply. `oauth.clientRegistration` must be `dcr` or `cimd`. A `cimd` entry cannot use `clientId` or `clientName`. Any `callbackUrl` must use localhost or 127.0.0.1 with path `/callback`.
 
-The extension still ignores project MCP overrides. A project cannot change the global server allowlist or exposure of the Role. Missing Skills, tools, MCP servers, Roles, or routes fail before productive work starts. The extension excludes Main-only delegation and recovery tools and `ask_question` from children.
+The extension still ignores project MCP overrides. A project cannot change the global server allowlist or exposure of the Role. Missing Skills, tools, MCP servers, Roles, or routes fail before productive work starts. The extension excludes Main-only delegation, integration, and recovery tools, `herdr_handoff`, and `ask_question` from children.
 
 Isolated Herdr Role launches receive the same turn, token, and child-runtime budget metadata as ephemeral launches. Retained workers therefore keep one non-refilling session budget across follow-ups rather than receiving a new request budget.
 
