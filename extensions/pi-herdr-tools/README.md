@@ -61,9 +61,14 @@ Worktree creation uses `herdr worktree create --workspace <current-workspace> --
 
 Run `/handoff-worktree Fix the flaky login test`. The agent collects missing facts, asking one question only for an unclear repository, outcome, or critical constraint. It sends a self-contained prompt, not the conversation, and reports without waiting for completion.
 
-The tool registers only with `HERDR_ENV=1`. It also requires `HERDR_PANE_ID`, local `main`, and matching Git repositories for the current directory and pane workspace.
+The tool registers only with `HERDR_ENV=1`. It also requires `HERDR_PANE_ID` and local `main`. A handoff has no checked integration: the new agent works without supervision. Delegated subagents cannot use the tool.
 
-All parameters must be non-empty strings:
+The tool selects the repository in one of two ways:
+
+- Without `repo`, the current directory and the pane workspace must be in the same Git repository.
+- With `repo`, the tool uses that child repository of the Pi working directory. Use it when Pi runs in a parent directory that holds many repositories. The current workspace does not need a Git checkout.
+
+The tool never selects a child repository automatically. All parameters must be non-empty strings:
 
 | Parameter | Requirement |
 | --- | --- |
@@ -71,8 +76,9 @@ All parameters must be non-empty strings:
 | `label` | Workspace label. |
 | `agentName` | Unique agent name matching `^[a-z][a-z0-9_-]{0,31}$`. |
 | `prompt` | Self-contained task prompt. |
+| `repo` | Optional. A Git top-level directory, relative to the Pi working directory. It must not contain `..` or resolve outside that directory. A subdirectory of a repository fails. |
 
-After validation, the tool runs `herdr worktree create --workspace <parent> --branch <branch> --base main --label <label> --no-focus`. It starts Pi without session arguments. It submits `herdr agent prompt <agentName> <prompt> --wait --until working --timeout 30000`, with the prompt as one argument, not a shell command or file. The result includes workspace ID, tab, pane, branch, checkout path, and agent name.
+After validation, the tool runs `herdr worktree create --workspace <parent> --branch <branch> --base main --label <label> --no-focus`. With `repo`, it uses `--cwd <repository>` instead of `--workspace <parent>`. Herdr then opens the primary workspace of the repository, or creates it, and does not close it later. It starts Pi without session arguments. It submits `herdr agent prompt <agentName> <prompt> --wait --until working --timeout 30000`, with the prompt as one argument, not a shell command or file. The result includes workspace ID, tab, pane, branch, checkout path, agent name, and `repo` when set.
 
 ### Side questions
 
