@@ -1,11 +1,11 @@
-# `@csubj/pi-session-recall`
+# `@hcflabs/pi-session-recall`
 
 Search past Pi sessions locally for decisions and context. Saved transcripts enter model context only when requested, not on every turn.
 
 ## Install
 
 ```bash
-pi install npm:@csubj/pi-session-recall
+pi install npm:@hcflabs/pi-session-recall
 ```
 
 ## Use

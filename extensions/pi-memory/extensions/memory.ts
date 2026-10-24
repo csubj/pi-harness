@@ -2,14 +2,14 @@ import { lstat, mkdir, opendir, realpath } from "node:fs/promises";
 import { join, sep } from "node:path";
 import { StringEnum } from "@earendil-works/pi-ai";
 import { BorderedLoader, DynamicBorder, generateDiffString, getAgentDir, getSelectListTheme, renderDiff, withFileMutationQueue, type ExtensionAPI, type ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { askQuestion } from "@csubj/pi-ask-question";
+import { askQuestion } from "@hcflabs/pi-ask-question";
 import {
 	extensionConfigDir,
 	formatConfigIssues,
 	readTextFileBounded,
 	registerConfigReporting,
 	writePrivateTextFileAtomically,
-} from "@csubj/pi-config-store";
+} from "@hcflabs/pi-config-store";
 import {
 	executeTaskRoutes,
 	loadTaskModelsConfig,
@@ -19,7 +19,7 @@ import {
 	type ModelTask,
 	type ResolvedTaskRoute,
 	type TaskRouteError,
-} from "@csubj/pi-task-models";
+} from "@hcflabs/pi-task-models";
 import { Container, matchesKey, ScrollView, SelectList, Spacer, Text } from "@earendil-works/pi-tui";
 import { lock } from "proper-lockfile";
 import { Type } from "typebox";
@@ -49,7 +49,7 @@ const DREAM_STATE_MAX_BYTES = 4 * 1024;
 // Defense-in-depth against snapshot frame spoofing by poisoned on-disk entries.
 const FRAME_TOKEN_REPLACEMENT = "[filtered frame token]";
 const DISPLAY_CONTROL_CHARACTER = /[\p{Cc}\p{Cf}]/gu;
-// @csubj/pi-herdr-tools does not export internal/core.ts from its package root.
+// @hcflabs/pi-herdr-tools does not export internal/core.ts from its package root.
 const BTW_CHILD_PAYLOAD_ARG = "--pi-herdr-btw-payload";
 const PROMPT_SECTION = "pi_memory";
 export const MEMORY_REVIEW_TASK = {

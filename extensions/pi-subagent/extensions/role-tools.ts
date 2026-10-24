@@ -8,7 +8,7 @@ import {
 	PI_SUBAGENT_PROCESS_LEASE,
 	ROLE_TOOL_POLICY_FLAG,
 	type EphemeralSubagentExecutionBudget,
-} from "@csubj/pi-subagent";
+} from "@hcflabs/pi-subagent";
 
 const childExcludedTools: ReadonlySet<string> = new Set(CHILD_EXCLUDED_TOOL_NAMES);
 // Pi does not declare these exposures on registration: `codemode`/`deferred` tools stay callable from

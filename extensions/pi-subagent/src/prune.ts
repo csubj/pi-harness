@@ -1,6 +1,6 @@
 import { existsSync, realpathSync } from "node:fs";
 import { basename, join, sep } from "node:path";
-import { createHerdrClient } from "@csubj/pi-herdr";
+import { createHerdrClient } from "@hcflabs/pi-herdr";
 import { runGit, type GitRunner } from "./git-process.ts";
 import { runProcess } from "./process.ts";
 import { inspectWorktreeDirty, OWNED_BRANCH_PATTERN, WORKTREES_DIRNAME } from "./worktree.ts";

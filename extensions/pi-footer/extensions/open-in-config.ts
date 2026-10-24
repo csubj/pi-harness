@@ -1,4 +1,4 @@
-import { createConfigStore, field, parsers } from "@csubj/pi-config-store";
+import { createConfigStore, field, parsers } from "@hcflabs/pi-config-store";
 
 const DEFAULT_COMMAND = "code";
 

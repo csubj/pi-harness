@@ -4,7 +4,7 @@ import { mkdir, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import type { EphemeralSubagentExecutor } from "@csubj/pi-subagent";
+import type { EphemeralSubagentExecutor } from "@hcflabs/pi-subagent";
 import {
 	IsolatedRunner,
 	type CoordinatorRuntime,

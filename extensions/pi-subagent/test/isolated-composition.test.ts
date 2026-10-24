@@ -8,7 +8,7 @@ import {
 	type EphemeralSubagentExecutor,
 	type EphemeralSubagentResult,
 	type EphemeralSubagentRunInput,
-} from "@csubj/pi-subagent";
+} from "@hcflabs/pi-subagent";
 import {
 	createCanonicalGitRootResolver,
 	createExactJudgmentExecutor,

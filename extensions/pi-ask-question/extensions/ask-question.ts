@@ -1,5 +1,5 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { askQuestion } from "@csubj/pi-ask-question";
+import { askQuestion } from "@hcflabs/pi-ask-question";
 import { Type } from "typebox";
 
 const QuestionOptionSchema = Type.Object({

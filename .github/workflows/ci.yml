@@ -31,7 +31,7 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: pnpm run check:package-versions -- "$BASE_SHA" "$HEAD_SHA"
       - name: Validate website
-        run: pnpm --filter @csubj/pi-docs run validate
+        run: pnpm --filter @hcflabs/pi-docs run validate
       - run: pnpm test
       - run: pnpm run typecheck
       - run: pnpm run pack:check

@@ -1,6 +1,6 @@
 {
-  "name": "@csubj/pi-auto-compact",
-  "version": "5.2.8",
+  "name": "@hcflabs/pi-auto-compact",
+  "version": "5.2.9",
   "description": "Trim repeated reads and compact Pi context at a configurable threshold.",
   "keywords": [
     "pi-package",
@@ -30,11 +30,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/csubj/pi-harness.git",
+    "url": "git+https://github.com/hcflabs/pi-harness.git",
     "directory": "extensions/pi-auto-compact"
   },
   "bugs": {
-    "url": "https://github.com/csubj/pi-harness/issues"
+    "url": "https://github.com/hcflabs/pi-harness/issues"
   },
   "publishConfig": {
     "access": "public"
@@ -45,8 +45,8 @@
     ]
   },
   "dependencies": {
-    "@csubj/pi-config-store": "^4.0.0",
-    "@csubj/pi-task-models": "^9.0.0"
+    "@hcflabs/pi-config-store": "^4.0.0",
+    "@hcflabs/pi-task-models": "^9.0.0"
   },
   "devDependencies": {
     "@earendil-works/pi-coding-agent": "1.3.0"

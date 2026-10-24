@@ -1,6 +1,6 @@
 {
-  "name": "@csubj/pi-repo",
-  "version": "0.1.0",
+  "name": "@hcflabs/pi-repo",
+  "version": "0.1.1",
   "description": "Git repository target validation and child repository discovery for Pi packages.",
   "keywords": [
     "pi-package",
@@ -33,15 +33,15 @@
     "pack:check": "npm pack --dry-run"
   },
   "dependencies": {
-    "@csubj/pi-process": "^0.2.0"
+    "@hcflabs/pi-process": "^0.2.0"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/csubj/pi-harness.git",
+    "url": "git+https://github.com/hcflabs/pi-harness.git",
     "directory": "packages/pi-repo"
   },
   "bugs": {
-    "url": "https://github.com/csubj/pi-harness/issues"
+    "url": "https://github.com/hcflabs/pi-harness/issues"
   },
   "publishConfig": {
     "access": "public"

@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { DEFAULT_MAX_BYTES, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { createHerdrClient, hasHerdrErrorCode, herdrCommandFailure, startPiAgent } from "@csubj/pi-herdr";
+import { createHerdrClient, hasHerdrErrorCode, herdrCommandFailure, startPiAgent } from "@hcflabs/pi-herdr";
 import { utf8Prefix } from "./ephemeral.ts";
 import type { PreparedRoleLaunch, ResolvedRoleLaunch } from "./index.ts";
 import { assertPrivateLease, PI_SUBAGENT_PROCESS_LEASE, scanProcessLease } from "./process-lease.ts";

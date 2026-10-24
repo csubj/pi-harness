@@ -4,7 +4,7 @@ import { mkdir, mkdtemp, readdir, readFile, realpath, rm, symlink, writeFile } f
 import { tmpdir } from "node:os";
 import { join, basename } from "node:path";
 import test from "node:test";
-import type { EphemeralSubagentExecutor } from "@csubj/pi-subagent";
+import type { EphemeralSubagentExecutor } from "@hcflabs/pi-subagent";
 import {
 	COMMIT_NUDGE_INSTRUCTION,
 	IsolatedRunner,

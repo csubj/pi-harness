@@ -1,4 +1,4 @@
-import { createConfigStore, field, parsers } from "@csubj/pi-config-store";
+import { createConfigStore, field, parsers } from "@hcflabs/pi-config-store";
 
 export const TOOL_MODES = ["inherit", "all", "read-only", "none"] as const;
 export type BtwToolMode = (typeof TOOL_MODES)[number];

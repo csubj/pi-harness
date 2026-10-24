@@ -1,12 +1,12 @@
-# `@csubj/pi-prompt-creator`
+# `@hcflabs/pi-prompt-creator`
 
 Turn repeated requests or corrections in the Current Conversation into a global Pi prompt. Review the Prompt Candidate with Main and approve it before saving.
 
 ## Install
 
 ```bash
-pi install npm:@csubj/pi-task-models
-pi install npm:@csubj/pi-prompt-creator
+pi install npm:@hcflabs/pi-task-models
+pi install npm:@hcflabs/pi-prompt-creator
 ```
 
 Configure `fast` in `/task-models`, or override `pi-prompt-creator/draft`.
@@ -15,7 +15,7 @@ Configure `fast` in `/task-models`, or override `pi-prompt-creator/draft`.
 
 | Package | Relationship | Purpose |
 | --- | --- | --- |
-| [`@csubj/pi-task-models`](https://github.com/csubj/pi-harness/tree/main/extensions/pi-task-models) | Required | Provides the isolated draft model route. |
+| [`@hcflabs/pi-task-models`](https://github.com/hcflabs/pi-harness/tree/main/extensions/pi-task-models) | Required | Provides the isolated draft model route. |
 
 ## Use
 

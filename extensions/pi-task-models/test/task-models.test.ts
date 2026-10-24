@@ -16,7 +16,7 @@ import {
 	resolveTaskModelRoute,
 	taskThinkingLevels,
 	type ModelTask,
-} from "@csubj/pi-task-models";
+} from "@hcflabs/pi-task-models";
 import registerTaskModelsExtension from "../extensions/task-models.ts";
 
 const EXAMPLE_TASK = {
@@ -25,8 +25,8 @@ const EXAMPLE_TASK = {
 	purpose: "Review one requested change.",
 	defaultProfile: "fast",
 } as const satisfies ModelTask;
-const MODEL_TASK_REQUEST_EVENT = "@csubj/pi-task-models:model-task-request";
-const MODEL_TASK_RESPONSE_EVENT = "@csubj/pi-task-models:model-task-response";
+const MODEL_TASK_REQUEST_EVENT = "@hcflabs/pi-task-models:model-task-request";
+const MODEL_TASK_RESPONSE_EVENT = "@hcflabs/pi-task-models:model-task-response";
 const EXECUTION_ROUTES = [
 	{ model: { provider: "test", id: "primary" }, thinkingLevel: "off" },
 	{ model: { provider: "test", id: "fallback" }, thinkingLevel: "off" },

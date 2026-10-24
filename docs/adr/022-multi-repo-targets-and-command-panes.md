@@ -37,7 +37,7 @@ A request without `repo` keeps its earlier behavior. No tool selects a child rep
 
 ### Shared repository package
 
-A new library, `@csubj/pi-repo`, owns these mechanics:
+A new library, `@hcflabs/pi-repo`, owns these mechanics:
 
 - canonical Git root resolution
 - Repository target validation

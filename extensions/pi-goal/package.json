@@ -1,6 +1,6 @@
 {
-  "name": "@csubj/pi-goal",
-  "version": "0.1.4",
+  "name": "@hcflabs/pi-goal",
+  "version": "0.1.5",
   "description": "Persistent Pi goals that continue automatically until completion is proven with evidence.",
   "keywords": [
     "pi-package",
@@ -30,11 +30,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/csubj/pi-harness.git",
+    "url": "git+https://github.com/hcflabs/pi-harness.git",
     "directory": "extensions/pi-goal"
   },
   "bugs": {
-    "url": "https://github.com/csubj/pi-harness/issues"
+    "url": "https://github.com/hcflabs/pi-harness/issues"
   },
   "publishConfig": {
     "access": "public"

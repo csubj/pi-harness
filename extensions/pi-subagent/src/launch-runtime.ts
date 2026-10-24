@@ -8,7 +8,7 @@ import {
 	type ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
 import { resolveConfiguredRoleLaunch } from "./index.ts";
-import { registerModelTask } from "@csubj/pi-task-models";
+import { registerModelTask } from "@hcflabs/pi-task-models";
 import type {
 	CoordinatorRuntime,
 	OperationContext,

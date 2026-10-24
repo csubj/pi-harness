@@ -1,6 +1,6 @@
 {
-  "name": "@csubj/pi-process",
-  "version": "0.2.2",
+  "name": "@hcflabs/pi-process",
+  "version": "0.2.3",
   "description": "Bounded UTF-8 child-process execution for Pi packages.",
   "keywords": [
     "pi-package",
@@ -33,11 +33,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/csubj/pi-harness.git",
+    "url": "git+https://github.com/hcflabs/pi-harness.git",
     "directory": "packages/pi-process"
   },
   "bugs": {
-    "url": "https://github.com/csubj/pi-harness/issues"
+    "url": "https://github.com/hcflabs/pi-harness/issues"
   },
   "publishConfig": {
     "access": "public"

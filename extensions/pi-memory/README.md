@@ -1,4 +1,4 @@
-# `@csubj/pi-memory`
+# `@hcflabs/pi-memory`
 
 Keep durable preferences and cross-project facts across Pi sessions in size-limited Markdown stores.
 
@@ -7,9 +7,9 @@ Inspired by [Hermes Agent](https://github.com/NousResearch/hermes-agent) and its
 ## Install
 
 ```bash
-pi install npm:@csubj/pi-ask-question
-pi install npm:@csubj/pi-task-models
-pi install npm:@csubj/pi-memory
+pi install npm:@hcflabs/pi-ask-question
+pi install npm:@hcflabs/pi-task-models
+pi install npm:@hcflabs/pi-memory
 ```
 
 Configure `balanced` in `/task-models`.
@@ -18,9 +18,9 @@ Configure `balanced` in `/task-models`.
 
 | Package | Relationship | Purpose |
 | --- | --- | --- |
-| [`@csubj/pi-ask-question`](https://github.com/csubj/pi-harness/tree/main/extensions/pi-ask-question) | Required | Provides validated conflict prompts. |
-| [`@csubj/pi-herdr-tools`](https://github.com/csubj/pi-harness/tree/main/extensions/pi-herdr-tools) | Improves | Marks side-thread children to exclude parent-only memory injection and dream advice. |
-| [`@csubj/pi-task-models`](https://github.com/csubj/pi-harness/tree/main/extensions/pi-task-models) | Required | Provides routes for candidate review, `/remember` preparation, and `/dream` promotion. |
+| [`@hcflabs/pi-ask-question`](https://github.com/hcflabs/pi-harness/tree/main/extensions/pi-ask-question) | Required | Provides validated conflict prompts. |
+| [`@hcflabs/pi-herdr-tools`](https://github.com/hcflabs/pi-harness/tree/main/extensions/pi-herdr-tools) | Improves | Marks side-thread children to exclude parent-only memory injection and dream advice. |
+| [`@hcflabs/pi-task-models`](https://github.com/hcflabs/pi-harness/tree/main/extensions/pi-task-models) | Required | Provides routes for candidate review, `/remember` preparation, and `/dream` promotion. |
 
 ## Use
 
@@ -125,7 +125,7 @@ You can use iCloud Drive or an Obsidian-synced folder as `directory`. Sync only 
 
 ## Limits and recovery
 
-Cloud-synced files can be read outside Pi. Before using shared or synced storage, read [ADR 006: pi-memory global store threat model](https://github.com/csubj/pi-harness/blob/main/docs/adr/006-pi-memory-global-store-threat-model.md).
+Cloud-synced files can be read outside Pi. Before using shared or synced storage, read [ADR 006: pi-memory global store threat model](https://github.com/hcflabs/pi-harness/blob/main/docs/adr/006-pi-memory-global-store-threat-model.md).
 
 Writes over a store cap fail with current usage. Consolidate with one batch that removes or shortens stale entries and adds new content; only final size counts. Batches allow at most 100 operations; complete serialized mutations allow at most 1,000,000 UTF-8 bytes. Both limits apply before source reads or review; violations write nothing.
 

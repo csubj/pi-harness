@@ -4,7 +4,7 @@ import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { extensionConfigDir, extensionConfigPath } from "@csubj/pi-config-store";
+import { extensionConfigDir, extensionConfigPath } from "@hcflabs/pi-config-store";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { createAssistantMessageEventStream, normalizeContext } from "@earendil-works/pi-ai";
 import multiCodex, { createCodexAliasProvider, parseCodexUsage } from "../extensions/multi-codex.ts";

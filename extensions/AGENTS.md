@@ -2,7 +2,7 @@
 
 ## Extension config
 
-Use `@csubj/pi-config-store`. By default, an extension has one active config writer: reload after an external edit before writing again. `store.save(value)` serializes whole-file replacement but does not merge stale fields. When multiple writers are supported or concurrent field changes must survive, use `store.update(mutator)` to read and modify the latest valid config under the lock.
+Use `@hcflabs/pi-config-store`. By default, an extension has one active config writer: reload after an external edit before writing again. `store.save(value)` serializes whole-file replacement but does not merge stale fields. When multiple writers are supported or concurrent field changes must survive, use `store.update(mutator)` to read and modify the latest valid config under the lock.
 
 ## Tool parameter schemas
 

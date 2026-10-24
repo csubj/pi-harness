@@ -1,4 +1,4 @@
-# `@csubj/pi-notes`
+# `@hcflabs/pi-notes`
 
 Keep worktree reminders above the Pi editor across sessions.
 
@@ -7,7 +7,7 @@ Keep worktree reminders above the Pi editor across sessions.
 ## Install
 
 ```bash
-pi install npm:@csubj/pi-notes
+pi install npm:@hcflabs/pi-notes
 ```
 
 ## Use

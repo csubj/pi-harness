@@ -1,7 +1,7 @@
 {
-  "name": "@csubj/pi-task-models",
-  "version": "9.1.5",
-  "description": "Shared task model profiles and routing for csubj Pi extensions.",
+  "name": "@hcflabs/pi-task-models",
+  "version": "9.1.6",
+  "description": "Shared task model profiles and routing for hcflabs Pi extensions.",
   "keywords": [
     "pi-package",
     "pi",
@@ -43,11 +43,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/csubj/pi-harness.git",
+    "url": "git+https://github.com/hcflabs/pi-harness.git",
     "directory": "extensions/pi-task-models"
   },
   "bugs": {
-    "url": "https://github.com/csubj/pi-harness/issues"
+    "url": "https://github.com/hcflabs/pi-harness/issues"
   },
   "publishConfig": {
     "access": "public"
@@ -56,10 +56,10 @@
     "extensions": [
       "./extensions/task-models.ts"
     ],
-    "image": "https://raw.githubusercontent.com/csubj/pi-harness/main/extensions/pi-task-models/example.png"
+    "image": "https://raw.githubusercontent.com/hcflabs/pi-harness/main/extensions/pi-task-models/example.png"
   },
   "dependencies": {
-    "@csubj/pi-config-store": "^4.0.0"
+    "@hcflabs/pi-config-store": "^4.0.0"
   },
   "devDependencies": {
     "@earendil-works/pi-ai": "1.3.0",

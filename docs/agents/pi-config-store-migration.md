@@ -1,10 +1,10 @@
 # Pi Config Store Migration
 
-Agent record and runbook for the move of every user-edited extension config to the `@csubj/pi-config-store` 4.x field contract. It applies the warn and disable rule in [ADR 004](../adr/004-extension-config-safety.md) and the ownership rules in [ADR 018](../adr/018-extension-config-homes.md).
+Agent record and runbook for the move of every user-edited extension config to the `@hcflabs/pi-config-store` 4.x field contract. It applies the warn and disable rule in [ADR 004](../adr/004-extension-config-safety.md) and the ownership rules in [ADR 018](../adr/018-extension-config-homes.md).
 
 This is the single migration source of truth. Do not add a second `MIGRATION.md` inside the package.
 
-**Status:** complete. The store contract and every consumer below use the 4.x field contract. Every consumer depends on `@csubj/pi-config-store` `^4.0.0`, and every `@csubj/pi-task-models` consumer depends on `^9.0.0`. Use this page as the reference for a new config or a change to an existing one.
+**Status:** complete. The store contract and every consumer below use the 4.x field contract. Every consumer depends on `@hcflabs/pi-config-store` `^4.0.0`, and every `@hcflabs/pi-task-models` consumer depends on `^9.0.0`. Use this page as the reference for a new config or a change to an existing one.
 
 The earlier one-time move to Extension Config Homes is complete. Runtime code reads only `config/<extension-id>/`.
 
@@ -15,7 +15,7 @@ The earlier one-time move to Extension Config Homes is complete. Runtime code re
 - Do not change any file format. Existing valid files must load with the same effective values.
 - `loadSync()` never throws for file content or I/O. Do not wrap it in `try`/`catch` for those cases.
 - Register `registerConfigReporting(pi, [stores...])` once in the extension factory. Pass each lazy read result of a command or event to `reporter.report(ctx, store, result)`. Never report from a render; launch reporting covers a store that a render reads. All reporters in the process share one record per `session_start` event, so several extensions can report the same file and each issue still shows once.
-- A consumer of another owner's config registers the owner's reporting hook and calls it before each lazy read: `registerTaskModelsConfigReporting` (`@csubj/pi-task-models`) before route resolution, and `registerRoleDefaultsReporting` (`@csubj/pi-subagent`) before `loadRoleCatalog`. The owner API must never drop a nonblocking issue silently.
+- A consumer of another owner's config registers the owner's reporting hook and calls it before each lazy read: `registerTaskModelsConfigReporting` (`@hcflabs/pi-task-models`) before route resolution, and `registerRoleDefaultsReporting` (`@hcflabs/pi-subagent`) before `loadRoleCatalog`. The owner API must never drop a nonblocking issue silently.
 - When `status` is `disabled`, disable features that need the config. Keep config repair commands working; they write with `store.save`.
 - `store.update` refuses a file with any issue. A repair flow that builds its value from an earlier `loadSync()` snapshot replaces a broken file with `store.replaceIfUnchanged(snapshot, value)`, which compares the file bytes under the lock and refuses a changed file. `store.save` is only for a full replacement that does not depend on the current file. Before any replacement, including `save`, load and report the current file, and never drop a setting whose default is unsafe unless the command sets it.
 - A write command never writes back a cached or session-start value. It loads and reports the file, then merges its change into the latest value with `update` when that load is clean, or uses `replaceIfUnchanged` with that load when it has issues, so a change made during a dialog is never overwritten.

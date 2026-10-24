@@ -1,5 +1,5 @@
 #!/bin/sh
-# csubj Pi Harness installer.
+# hcflabs Pi Harness installer.
 # The extension list between the generated markers comes from extensions/*/package.json.
 # Do not edit that list by hand.
 
@@ -12,28 +12,28 @@ HERDR_INSTALLER_URL="https://herdr.dev/install.sh"
 HERDR_LATEST_URL="https://herdr.dev/latest.json"
 HERDR_MIN_VERSION="0.7.4"
 HERDR_SUBAGENT_MIN_VERSION="0.9.0"
-SUBAGENT_PACKAGE="@csubj/pi-subagent"
+SUBAGENT_PACKAGE="@hcflabs/pi-subagent"
 
 # BEGIN GENERATED EXTENSIONS
 EXTENSIONS='
-@csubj/pi-add-dir
-@csubj/pi-advisor
-@csubj/pi-ask-question
-@csubj/pi-auto-compact
-@csubj/pi-codegraph
-@csubj/pi-cron
-@csubj/pi-deps
-@csubj/pi-footer
-@csubj/pi-goal
-@csubj/pi-herdr-tools
-@csubj/pi-memory
-@csubj/pi-multi-codex
-@csubj/pi-notes
-@csubj/pi-prompt-creator
-@csubj/pi-session-recall
-@csubj/pi-subagent
-@csubj/pi-task-models
-@csubj/pi-undo
+@hcflabs/pi-add-dir
+@hcflabs/pi-advisor
+@hcflabs/pi-ask-question
+@hcflabs/pi-auto-compact
+@hcflabs/pi-codegraph
+@hcflabs/pi-cron
+@hcflabs/pi-deps
+@hcflabs/pi-footer
+@hcflabs/pi-goal
+@hcflabs/pi-herdr-tools
+@hcflabs/pi-memory
+@hcflabs/pi-multi-codex
+@hcflabs/pi-notes
+@hcflabs/pi-prompt-creator
+@hcflabs/pi-session-recall
+@hcflabs/pi-subagent
+@hcflabs/pi-task-models
+@hcflabs/pi-undo
 '
 # END GENERATED EXTENSIONS
 
@@ -475,7 +475,7 @@ main() {
   extension_count=$(count_extensions)
   [ "$extension_count" -gt 0 ] || die "No installable Pi extensions were found."
 
-  printf '\ncsubj Pi Harness installer\nPi + Herdr + selected extensions\n'
+  printf '\nhcflabs Pi Harness installer\nPi + Herdr + selected extensions\n'
   choose_extensions
   select_herdr_minimum
   ensure_pi

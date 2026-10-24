@@ -4,7 +4,7 @@ import { mkdir, mkdtemp, realpath, rm, symlink, writeFile } from "node:fs/promis
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import type { Exec } from "@csubj/pi-process";
+import type { Exec } from "@hcflabs/pi-process";
 import { discoverRepos, gitTopLevel, isWithin, RepoTargetError, resolveRepoTarget } from "../src/index.ts";
 
 async function scratch(t: test.TestContext): Promise<string> {

@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
-import { createConfigStore, extensionConfigDir, field, parsers, registerConfigReporting, writePrivateTextFileAtomically } from "@csubj/pi-config-store";
+import { createConfigStore, extensionConfigDir, field, parsers, registerConfigReporting, writePrivateTextFileAtomically } from "@hcflabs/pi-config-store";
 import { lock } from "proper-lockfile";
 import {
 	createAssistantMessageEventStream,

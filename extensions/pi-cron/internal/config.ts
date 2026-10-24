@@ -1,12 +1,12 @@
 import { isAbsolute } from "node:path";
-import { createConfigStore, extensionConfigDir, field, parsers, type FieldParser } from "@csubj/pi-config-store";
+import { createConfigStore, extensionConfigDir, field, parsers, type FieldParser } from "@hcflabs/pi-config-store";
 import {
 	canonicalModelReference,
 	PROFILE_NAMES,
 	THINKING_LEVELS,
 	type ProfileName,
 	type ThinkingLevel,
-} from "@csubj/pi-task-models";
+} from "@hcflabs/pi-task-models";
 import { parseEvery, type Schedule } from "./schedule.ts";
 
 const EXTENSION_ID = "pi-cron";

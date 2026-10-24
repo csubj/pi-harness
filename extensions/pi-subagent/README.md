@@ -1,4 +1,4 @@
-# `@csubj/pi-subagent`
+# `@hcflabs/pi-subagent`
 
 Delegate bounded work to configured Pi Roles through [Herdr](https://herdr.dev/). Direct tasks share your checkout; isolated tasks produce checked candidates for explicit integration. Both return a handle so Main can continue working.
 
@@ -9,8 +9,8 @@ Delegate bounded work to configured Pi Roles through [Herdr](https://herdr.dev/)
 Isolated work requires Herdr 0.9.3 or later for both the client and server. The server must run on API protocol 22 or later. Pi Subagent checks Herdr and server support before it starts.
 
 ```bash
-pi install npm:@csubj/pi-task-models
-pi install npm:@csubj/pi-subagent
+pi install npm:@hcflabs/pi-task-models
+pi install npm:@hcflabs/pi-subagent
 ```
 
 Configure the profiles that your Roles use in `/task-models`. Direct writer termination proof requires native `lsof`.
@@ -19,7 +19,7 @@ Configure the profiles that your Roles use in `/task-models`. Direct writer term
 
 | Package | Relationship | Purpose |
 | --- | --- | --- |
-| [`@csubj/pi-task-models`](https://github.com/csubj/pi-harness/tree/main/extensions/pi-task-models) | Required | Provides model routes for delegated Roles. |
+| [`@hcflabs/pi-task-models`](https://github.com/hcflabs/pi-harness/tree/main/extensions/pi-task-models) | Required | Provides model routes for delegated Roles. |
 
 ## Use
 
