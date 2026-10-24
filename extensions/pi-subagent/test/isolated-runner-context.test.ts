@@ -89,6 +89,7 @@ function runnerState(definitions: TaskRequest[], tasks: TaskState[]): RunState {
 			tasks: definitions,
 			finalChecks: [{ command: "check", args: [] }],
 		},
+		...(definitions.some((task) => task.kind === "changeset") ? { fullSuite: { check: { command: "check", args: [] }, source: { kind: "config" } } } : {}),
 		policy: {
 			maxSubagents: 5,
 			maxTurns: 50,

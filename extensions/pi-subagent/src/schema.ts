@@ -3,7 +3,7 @@ import { parseRoleName, type RoleName } from "./index.ts";
 import { Type, type Static } from "typebox";
 import { Check, Errors } from "typebox/value";
 
-export const RUN_STATE_VERSION = 5;
+export const RUN_STATE_VERSION = 6;
 export const MAX_TASKS = 8;
 export const MAX_EXECUTE_REQUEST_BYTES = 256 * 1024;
 export const MAX_PERSISTED_RUNTIME_TEXT_BYTES = 8 * 1024;
@@ -31,6 +31,21 @@ export const CheckCommandSchema = Type.Object({
 	command: TextSchema,
 	args: Type.Array(Type.String({ maxLength: 16_000 }), { maxItems: 128 }),
 }, { additionalProperties: false });
+
+/** The Full suite fixed at admission, with its source. Validation checks the same source again. */
+export const FullSuiteSchema = Type.Object({
+	check: CheckCommandSchema,
+	source: Type.Union([
+		Type.Object({ kind: Type.Literal("config") }, { additionalProperties: false }),
+		Type.Object({ kind: Type.Literal("package-json"), testScript: Type.String({ minLength: 1, maxLength: 16_000 }) }, { additionalProperties: false }),
+		Type.Object({
+			kind: Type.Literal("makefile"),
+			file: Type.Union([Type.Literal("GNUmakefile"), Type.Literal("makefile"), Type.Literal("Makefile")]),
+			sha256: Type.String({ pattern: "^[0-9a-f]{64}$" }),
+		}, { additionalProperties: false }),
+	]),
+}, { additionalProperties: false });
+export type AdmittedFullSuite = Static<typeof FullSuiteSchema>;
 
 /** One display form for a check command; quoted args keep argv boundaries visible. */
 export function formatCheckCommand({ command, args }: { command: string; args: readonly string[] }): string {
@@ -516,6 +531,8 @@ const RunStateSchema = Type.Object({
 	version: Type.Literal(RUN_STATE_VERSION),
 	request: ExecuteRequestSchema,
 	policy: ExecutionPolicySnapshotSchema,
+	/** Present exactly when the request has a changeset task. */
+	fullSuite: Type.Optional(FullSuiteSchema),
 	correctionCount: Type.Integer({ minimum: 0 }),
 	root: TextSchema,
 	requestStartMain: WorkspaceSchema,
@@ -1138,6 +1155,12 @@ export function parseRunState(value: unknown): RunState {
 	const state = value as RunState;
 	const request = parseExecuteRequest(state.request);
 	parseIntegrationState(state.integration, request);
+	const changeset = request.tasks.some((task) => task.kind === "changeset");
+	if (changeset !== (state.fullSuite !== undefined)) throw new Error("A Full suite must be recorded exactly for a request with changeset tasks.");
+	if (state.fullSuite && !request.finalChecks.some(({ command, args }) => command === state.fullSuite!.check.command
+		&& args.length === state.fullSuite!.check.args.length && args.every((arg, index) => arg === state.fullSuite!.check.args[index]))) {
+		throw new Error("The recorded Full suite is not in the request final checks.");
+	}
 	if (state.status !== "aborted" && state.integration.generations.some((generation) => generation.supersededFrom === "discarded")) {
 		throw new Error("User-discarded generations require an aborted request.");
 	}

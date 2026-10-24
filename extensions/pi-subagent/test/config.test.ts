@@ -32,12 +32,13 @@ test("missing config yields default limits without a legacy fallback", async () 
 test("valid execution limits, timeout, and roleDefaults are accepted", async () => {
 	await withStore(async (store) => {
 		const roleDefaults = { extensions: ["/provider.ts"], tools: ["read"], skills: [] };
+		const repoSuites = { "/code/service": { command: "uv", args: ["run", "pytest", "-q"] } };
 		await writeFile(store.path, JSON.stringify({
-			maxSubagents: 3, maxTurns: 1, maxTokens: 2_000, maxCorrections: 0, timeout: { idleMinutes: 15, maxMinutes: 60 }, roleDefaults,
+			maxSubagents: 3, maxTurns: 1, maxTokens: 2_000, maxCorrections: 0, timeout: { idleMinutes: 15, maxMinutes: 60 }, roleDefaults, repoSuites,
 		}));
 		const loaded = store.loadSync();
 		assert.deepEqual(loaded, { status: "ok", source: "file", value: {
-			maxSubagents: 3, maxTurns: 1, maxTokens: 2_000, maxCorrections: 0, timeout: { idleMinutes: 15, maxMinutes: 60 }, roleDefaults,
+			maxSubagents: 3, maxTurns: 1, maxTokens: 2_000, maxCorrections: 0, timeout: { idleMinutes: 15, maxMinutes: 60 }, roleDefaults, repoSuites,
 		}, issues: [] });
 		assert.deepEqual(resolveExecutionPolicy(store.path, loaded), {
 			maxSubagents: 3, maxTurns: 1, maxTokens: 2_000, childIdleMs: 900_000, childMaxMs: 3_600_000, maxCorrections: 0,
@@ -105,4 +106,22 @@ test("a misspelled bounded limit warns and keeps its finite default", async () =
 		]);
 		assert.deepEqual(loaded.status === "ok" && loaded.value, DEFAULT_SUBAGENT_CONFIG);
 	});
+});
+
+test("one invalid repoSuites entry disables delegation instead of dropping the entry", async () => {
+	for (const repoSuites of [
+		{ "relative/path": { command: "make", args: ["test"] } },
+		{ "/code/a": { command: "make", args: ["test"], shell: true } },
+		{ "/code/a": { command: " make", args: [] } },
+		{ "/code/a": { command: "make", args: ["te\u0000st"] } },
+		{ "/code/a": { command: "make" } },
+		["/code/a"],
+	]) {
+		await withStore(async (store) => {
+			await writeFile(store.path, JSON.stringify({ repoSuites }));
+			const loaded = store.loadSync();
+			assert.equal(loaded.status, "disabled", JSON.stringify(repoSuites));
+			assert.throws(() => resolveExecutionPolicy(store.path, loaded), /repoSuites.*delegation is blocked/);
+		});
+	}
 });

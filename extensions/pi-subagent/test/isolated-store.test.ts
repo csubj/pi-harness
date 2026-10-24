@@ -75,7 +75,7 @@ function state(root: string): RunState {
 	};
 }
 
-test("the store persists v5 text state, rejects duplicate creates, and preserves unsupported older files", async () => {
+test("the store persists v6 text state, rejects duplicate creates, and preserves unsupported older files", async () => {
 	const sandbox = await mkdtemp(join(tmpdir(), "pi-subagent-store-"));
 	const plannedRoot = join(sandbox, "repo");
 	const agentDir = join(sandbox, "agent");
@@ -109,7 +109,7 @@ test("the store persists v5 text state, rejects duplicate creates, and preserves
 			const legacyPath = store.statePath(root, `legacy-v${version}`);
 			const legacy = JSON.stringify({ ...created, version, launchRecords: {} });
 			await writeFile(legacyPath, legacy);
-			await assert.rejects(store.load(root, `legacy-v${version}`), new RegExp(`Unsupported pi-subagent state version ${version}; expected 5`));
+			await assert.rejects(store.load(root, `legacy-v${version}`), new RegExp(`Unsupported pi-subagent state version ${version}; expected 6`));
 			assert.equal(await readFile(legacyPath, "utf8"), legacy);
 		}
 	} finally {
@@ -167,7 +167,7 @@ test("invalid and oversized state files are rejected without replacement", async
 		const malformedPath = store.statePath(root, "malformed");
 		const malformed = "{}\n";
 		await writeFile(malformedPath, malformed);
-		await assert.rejects(store.load(root, "malformed"), /Unsupported or malformed pi-subagent v5 state/);
+		await assert.rejects(store.load(root, "malformed"), /Unsupported or malformed pi-subagent v6 state/);
 		assert.equal(await readFile(malformedPath, "utf8"), malformed);
 
 		const oversizedPath = store.statePath(root, "oversized");

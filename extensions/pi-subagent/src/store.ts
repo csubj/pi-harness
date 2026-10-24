@@ -19,8 +19,10 @@ const INITIAL_STATE_MAX_BYTES = 2 * 1024 * 1024;
 const STATE_MAX_BYTES = 128 * 1024 * 1024;
 const ADMISSION_MAX_FILES = 256;
 const ADMISSION_MAX_BYTES = STATE_MAX_BYTES;
-const V4_TERMINAL_STATUSES = new Set(["completed", "final_failed", "superseded", "aborted"]);
-const V4_UNFINISHED_STATUSES = new Set(["pending", "running", "needs_attention"]);
+// v4 and v5 use the same request statuses. Admission reads only the version and the status of older files.
+const LEGACY_VERSIONS = new Set([4, 5]);
+const LEGACY_TERMINAL_STATUSES = new Set(["completed", "final_failed", "superseded", "aborted"]);
+const LEGACY_UNFINISHED_STATUSES = new Set(["pending", "running", "needs_attention"]);
 const LOCK_OPTIONS = { realpath: false, stale: 30_000, update: 5_000, retries: 0 } as const;
 const LIFECYCLE_LOCK_OPTIONS = {
 	...LOCK_OPTIONS,
@@ -331,7 +333,7 @@ export class FileRunStore {
 		}
 	}
 
-	/** Read only version and request status; never migrate or interpret v4 worker evidence. */
+	/** Read only version and request status; never migrate or interpret v4 or v5 worker evidence. */
 	async assertLegacyAdmissionSafe(root: string): Promise<void> {
 		const directory = this.stateDirectory(root);
 		await this.assertSafeDestination(root, directory);
@@ -358,12 +360,12 @@ export class FileRunStore {
 				throw new Error(`Pi Subagent malformed state ${id} blocks safe admission. ${recovery}`);
 			}
 			if (value.version === RUN_STATE_VERSION) continue;
-			if (value.version !== 4 || !("status" in value) || typeof value.status !== "string"
-				|| (!V4_TERMINAL_STATUSES.has(value.status) && !V4_UNFINISHED_STATUSES.has(value.status))) {
+			if (typeof value.version !== "number" || !LEGACY_VERSIONS.has(value.version) || !("status" in value) || typeof value.status !== "string"
+				|| (!LEGACY_TERMINAL_STATUSES.has(value.status) && !LEGACY_UNFINISHED_STATUSES.has(value.status))) {
 				throw new Error(`Pi Subagent malformed or unsupported legacy state ${id} blocks safe admission. ${recovery}`);
 			}
-			if (V4_UNFINISHED_STATUSES.has(value.status)) {
-				throw new Error(`Pi Subagent unfinished v4 request ${id} (${value.status}) blocks new isolated work. ${recovery}`);
+			if (LEGACY_UNFINISHED_STATUSES.has(value.status)) {
+				throw new Error(`Pi Subagent unfinished v${value.version} request ${id} (${value.status}) blocks new isolated work. ${recovery}`);
 			}
 		}
 	}

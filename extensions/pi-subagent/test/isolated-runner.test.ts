@@ -592,9 +592,18 @@ test("plan runs execute admission checks without state, host calls, or workers a
 	assert.deepEqual([plan.root, plan.main, inputs.map(({ dryRun }) => dryRun)], [await realpath(root), runtime.main, [true]]);
 	assert.deepEqual(runtimeCallDelta(runtime, before), { ...Object.fromEntries(Object.keys(before).map((key) => [key, 0])), preflights: 1 });
 	await assert.rejects(readdir(store.stateDirectory(plan.root)), { code: "ENOENT" }, "no state, lock, or lease file");
+	assert.deepEqual(plan.fullSuite, { check: { command: "pnpm", args: ["test"] }, source: { kind: "package-json", testScript: JSON.parse(await readFile(join(root, "package.json"), "utf8")).scripts.test } });
 	await writeFile(join(root, "package.json"), "{}");
-	await assert.rejects(runner.plan(request("dry-run", [changesetTask("change")]), root), /Canonical root test script is missing/);
-	await assert.rejects(runner.execute(request("dry-run", [changesetTask("change")]), root), /Canonical root test script is missing/);
+	await assert.rejects(runner.plan(request("dry-run", [changesetTask("change")]), root), /No Full suite is available for .*Configure repoSuites/);
+	await assert.rejects(runner.execute(request("dry-run", [changesetTask("change")]), root), /No Full suite is available/);
+	// Without a package test script, a literal Makefile test target selects make test.
+	await writeFile(join(root, "Makefile"), "VAR := 1\n.PHONY: test\ntest: build\n\tgo test ./...\n");
+	const makePlan = await runner.plan(request("dry-run", [changesetTask("change")]), root);
+	assert.deepEqual(makePlan.request.finalChecks[0], { command: "make", args: ["test"] });
+	assert.equal(makePlan.fullSuite?.source.kind, "makefile");
+	await writeFile(join(root, "package.json"), "{ malformed");
+	await assert.rejects(runner.plan(request("dry-run", [changesetTask("change")]), root), /cannot parse .*package\.json/);
+	await writeFile(join(root, "package.json"), "{}");
 	runtime.main = { ...runtime.main, index: oid("d") };
 	await assert.rejects(runner.plan(request("dry-run", [textTask("text")]), root), /Main identity must be clean and committed/);
 });
@@ -1334,7 +1343,7 @@ test("a failed preliminary changeset check gets one same-worker correction befor
 	const agent = attempt.allocations.find((allocation) => allocation.kind === "agent");
 	if (!agent?.agentName) throw new Error("Expected one allocated worker.");
 
-	assert.equal(result.state.version, 5);
+	assert.equal(result.state.version, 6);
 	assert.equal(result.state.accepted, false);
 	assert.deepEqual(runtime.workerCalls, [
 		{ taskId: "change", kind: "initial" },
@@ -1615,7 +1624,7 @@ test("status preserves interrupted and ambiguous changeset prompts without produ
 
 			const reported = await runner.status(definition.id, root);
 			const reportedAttempt = changesetState(reported.state, "change").attempts[0]!;
-			assert.equal(reported.state.version, 5);
+			assert.equal(reported.state.version, 6);
 			assert.equal(reported.state.status, boundary === "interrupted" ? "running" : "needs_attention");
 			assert.equal(reportedAttempt.prompts[0]?.status, boundary === "interrupted" ? "submitting" : "ambiguous");
 			assert.equal(reportedAttempt.termination, undefined);
