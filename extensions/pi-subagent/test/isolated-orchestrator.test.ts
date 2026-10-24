@@ -1635,6 +1635,7 @@ test("root active delegation sources smoke-load only the unified delegation tool
 		"delegate_task",
 		"subagent_abort",
 		"subagent_integrate",
+		"subagent_repos",
 		"subagent_resume",
 		"subagent_stage",
 		"subagent_status",

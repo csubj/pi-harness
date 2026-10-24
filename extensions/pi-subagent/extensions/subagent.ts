@@ -3,14 +3,16 @@ import type { ExtensionAPI, ExtensionContext, Theme } from "@earendil-works/pi-c
 import { type Component, Text, type TUI, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 import { availableTaskModels, loadTaskModelsConfig, modelReference, type ProfileName, registerModelTask, registerTaskModelsConfigReporting, resolveAvailableModel, resolveConfiguredTaskRoute, type ResolvedTaskRoute, taskThinkingLevels } from "@hcflabs/pi-task-models";
 import { registerConfigReporting } from "@hcflabs/pi-config-store";
+import { resolveRepoTarget } from "@hcflabs/pi-repo";
 import { capEphemeralSubagentOutput as capOutput, createEphemeralSubagentExecutor, createSubagentConfigStore, DEFAULT_SUBAGENT_CONFIG, DELEGATE_TASK, findRole, formatDuration, loadRoleCatalog, prepareRoleLaunch, resolveRolePackageResources, resolveTaskRoute, ROLE_TOOL_POLICY_FLAG, type ExecutionPolicySnapshot, type Role } from "@hcflabs/pi-subagent";
 import { resolveExecutionPolicy } from "./config.ts";
 import { registerCheckoutAdmission } from "./admission.ts";
 import { registerIsolatedExtension } from "./isolated.ts";
+import { registerRepoDiscovery } from "./repos.ts";
 import { directRef, registerSubagentCommand, type DirectDisplay, type DirectTask } from "./subagent-command.ts";
 import { MODEL_CLASS_GUIDANCE } from "./model-class-policy.ts";
 import { compactCost, compactTokens, ENTRY_STATUS_PRESENTATION, formatWorkflowResult, workerOutputForMain, type BackgroundWorkflowTransportDetails, type WorkflowTransportEntry } from "./result-transport.ts";
-import { checkoutNote, DelegateTaskParameters, identifyWorkflowEntries, parseDelegateTask, runForegroundWorkflow, snapshotCheckout, writesCheckout, type CheckoutSnapshot, type ParsedWorkflow, type WorkflowEntry } from "./workflow.ts";
+import { checkoutNote, DelegateTaskParameters, identifyWorkflowEntries, parseDelegateTask, runForegroundWorkflow, snapshotCheckout, workflowRepos, writesCheckout, type CheckoutSnapshot, type ParsedWorkflow, type WorkflowEntry } from "./workflow.ts";
 import { assertSettledDirectSession, createDirectHerdr, DirectAllocationError, directTaskReader, type DirectAllocation, type DirectHandle, type DirectTab, type DirectToolActivity, type DirectUsage } from "../dist/direct-herdr.js";
 import { materializeTransientLaunch } from "../dist/launch-runtime.js";
 const WIDGET_KEY = "subagent-status";
@@ -223,15 +225,17 @@ export default function subagentExtension(pi: ExtensionAPI): void {
 		reportConfig(ctx);
 		currentPolicy();
 	};
-	const canWrite = (input: unknown): boolean => {
+	/** A direct writer reserves the checkout of each task target. An unparsable call is a writer in the Pi working directory. */
+	const classifyDirect = (input: unknown): boolean | Array<string | undefined> => {
 		try {
 			const parsed = parseDelegateTask(input);
-			return parsed.mode === "direct" && !parsed.dryRun && writesCheckout(parsed.workflow);
+			return parsed.mode === "direct" && !parsed.dryRun && writesCheckout(parsed.workflow) && workflowRepos(parsed.workflow);
 		} catch {
 			return true;
 		}
 	};
-	const holdAdmission = registerCheckoutAdmission(pi, canWrite);
+	const holdAdmission = registerCheckoutAdmission(pi, classifyDirect);
+	registerRepoDiscovery(pi);
 	/** Resolve a Role's package resources and route for a direct Herdr launch. */
 	const prepareDirectLaunch = async (role: Role, context: ExtensionContext, options: { modelClass?: ProfileName; model?: string }) => {
 		const resources = await resolveRolePackageResources(role, context);
@@ -634,7 +638,7 @@ export default function subagentExtension(pi: ExtensionAPI): void {
 	};
 
 	/** Dry run of a direct launch: the same checks, then a bounded plan; no tab, record, admission, or follow-up. */
-	const planDirect = async (workflow: ParsedWorkflow, sources: ReadonlyMap<number, DirectTabRecord & { turn: string }>, cwd: string, ctx: ExtensionContext) => {
+	const planDirect = async (workflow: ParsedWorkflow, sources: ReadonlyMap<number, DirectTabRecord & { turn: string }>, cwd: string, targets: readonly string[], ctx: ExtensionContext) => {
 		for (const [index, source] of sources) {
 			try { await assertSettledDirectSession(source.sessionFile, source.turn); } catch (error) {
 				throw boundedError(new Error(`Cannot continue ${workflow.delegations[index]!.continueFrom}: ${error instanceof Error ? error.message : String(error)}.`, { cause: error }));
@@ -652,6 +656,7 @@ export default function subagentExtension(pi: ExtensionAPI): void {
 				directTaskReader(workflow.mode === "chain" ? delegation.task.replaceAll("{previous}", "") : delegation.task, prepared.tools);
 			} catch (error) { throw boundedError(error); }
 			entries.push({ index, name, role, access, model: modelReference(prepared.model), thinkingLevel: prepared.thinkingLevel,
+				...(delegation.repo === undefined ? {} : { repo: delegation.repo, cwd: targets[index]! }),
 				...(continueFrom === undefined ? {} : { continueFrom }), ...(workflow.mode === "chain" && index ? { after: index } : {}) });
 		}
 		const writes = writesCheckout(workflow);
@@ -663,8 +668,8 @@ export default function subagentExtension(pi: ExtensionAPI): void {
 		];
 		const text = [
 			`Dry run passed: direct ${workflow.mode} request with ${entries.length} task(s) in ${cwd}. No Herdr tab, session record, checkout admission, or follow-up was created.`,
-			...entries.map((entry) => `${entry.index + 1}. ${entry.name} · ${entry.role} · ${entry.model} · thinking ${entry.thinkingLevel} · access ${entry.access}${entry.access === "write" ? " (JSON completion required)" : ""}${entry.after ? ` · after ${entry.after}` : ""}${entry.continueFrom ? ` · continues ${entry.continueFrom}` : ""}`),
-			writes ? "Write request: tasks would run serially and reserve this checkout until owned workers are proved stopped."
+			...entries.map((entry) => `${entry.index + 1}. ${entry.name} · ${entry.role} · ${entry.model} · thinking ${entry.thinkingLevel} · access ${entry.access}${entry.access === "write" ? " (JSON completion required)" : ""}${entry.repo ? ` · repo ${entry.repo} (${entry.cwd})` : ""}${entry.after ? ` · after ${entry.after}` : ""}${entry.continueFrom ? ` · continues ${entry.continueFrom}` : ""}`),
+			writes ? `Write request: tasks would run serially and reserve ${new Set(targets).size > 1 ? "each target checkout" : "this checkout"} until owned workers are proved stopped.`
 				: "Read request: tasks would run concurrently without checkout admission.",
 			...notChecked.map((reason) => `Not checked: ${reason}.`),
 		].join("\n");
@@ -720,7 +725,25 @@ export default function subagentExtension(pi: ExtensionAPI): void {
 			const branchTabs = ctx.sessionManager.getBranch().flatMap((entry) =>
 				entry.type === "custom" && entry.customType === DIRECT_TAB_TYPE && entry.data ? [entry.data as DirectTabRecord] : []);
 			const policy = currentPolicy();
-			const herdr = createDirectHerdr(pi, ctx.cwd, policy.childIdleMs);
+			// Resolve each Repository target before continuation checks, admission evidence, or Herdr calls.
+			const targets: string[] = [];
+			for (const [index, { repo }] of workflow.delegations.entries()) {
+				if (repo === undefined) { targets.push(ctx.cwd); continue; }
+				try {
+					targets.push((await resolveRepoTarget(ctx.cwd, repo, signal ? { signal } : {})).root);
+				} catch (error) {
+					throw boundedError(new Error(`Task ${index + 1} repo ${repo}: ${error instanceof Error ? error.message : String(error)}`, { cause: error }));
+				}
+			}
+			// Workers open in the caller's Herdr workspace with the target as their working directory.
+			const herdrByCwd = new Map<string, ReturnType<typeof createDirectHerdr>>();
+			const herdrFor = (cwd: string) => {
+				let client = herdrByCwd.get(cwd);
+				if (!client) herdrByCwd.set(cwd, client = createDirectHerdr(pi, cwd, policy.childIdleMs));
+				return client;
+			};
+			const herdr = herdrFor(ctx.cwd);
+			const entryCwd = (index: number) => herdrFor(targets[index]!).cwd;
 			const sources = new Map<number, DirectTabRecord & { turn: string }>();
 			for (const [index, { continueFrom, role }] of workflow.delegations.entries()) {
 				if (continueFrom === undefined) continue;
@@ -731,27 +754,28 @@ export default function subagentExtension(pi: ExtensionAPI): void {
 				const source = matches[0]!;
 				if (source.display!.role !== role) throw refuse(`it ran with Role ${source.display!.role}, not ${role}; use the recorded Role`);
 				if (source.turn === undefined) throw refuse("its record has no turn identity (saved by an older pi-subagent), so it is not continuable; start a fresh task");
-				if (source.workspaceId !== herdr.workspaceId || source.cwd !== herdr.cwd) {
-					throw refuse(`it ran in ${source.cwd ?? "an unrecorded checkout"} (Herdr workspace ${source.workspaceId ?? "unrecorded"}), not this checkout and workspace; start a fresh task here`);
+				const target = herdrFor(targets[index]!);
+				if (source.workspaceId !== target.workspaceId || source.cwd !== target.cwd) {
+					throw refuse(`it ran in ${source.cwd ?? "an unrecorded checkout"} (Herdr workspace ${source.workspaceId ?? "unrecorded"}), not in ${target.cwd} and this workspace; select the repo where it ran, or start a fresh task`);
 				}
 				if ([...directTasks.values()].some(({ tabs, continues }) => continues?.has(source.sessionFile)
 					|| tabs.some(({ sessionFile }) => sessionFile === source.sessionFile))) throw refuse("a locally active direct task still owns its session");
 				if ([...sources.values()].some(({ sessionFile }) => sessionFile === source.sessionFile)) throw refuse("this request already continues its session");
 				sources.set(index, { ...source, turn: source.turn });
 			}
-			if (parsed.dryRun) return await planDirect(workflow, sources, herdr.cwd, latestCtx ?? ctx);
+			if (parsed.dryRun) return await planDirect(workflow, sources, herdr.cwd, workflow.delegations.map((_, index) => entryCwd(index)), latestCtx ?? ctx);
 			const writes = writesCheckout(workflow);
 			const entries = identifyWorkflowEntries(toolCallId, workflow);
 			const states = new Map<string, WorkflowTransportEntry>(entries.map(({ id, index, delegation }) => [id, {
 				id, index, role: delegation.role, status: "pending",
-				name: delegation.continueFrom === undefined ? delegation.name : `${delegation.name} (continued from ${delegation.continueFrom})`,
+				name: `${delegation.continueFrom === undefined ? delegation.name : `${delegation.name} (continued from ${delegation.continueFrom})`}${delegation.repo === undefined ? "" : ` · repo ${delegation.repo}`}`,
 			}]));
 			const startedAt = new Map<string, number>();
 			// Launch snapshots: write requests report changes; read requests detect a stale checkout.
 			const snapshots = new Map<string, CheckoutSnapshot | Error | undefined>();
-			const checkout = async ({ id, delegation }: WorkflowEntry) => {
+			const checkout = async ({ id, index, delegation }: WorkflowEntry) => {
 				if (!snapshots.has(id)) return {};
-				const note = await checkoutNote(ctx.cwd, snapshots.get(id), writes, delegation.paths);
+				const note = await checkoutNote(entryCwd(index), snapshots.get(id), writes, delegation.paths);
 				return note ? { checkout: note } : {};
 			};
 			const measured = (id: string, usage: DirectUsage | undefined) => ({
@@ -795,7 +819,7 @@ export default function subagentExtension(pi: ExtensionAPI): void {
 					const proof = (async () => {
 						entryControllers.get(entryId)!.abort();
 						await handle.cancel().catch(() => undefined);
-						await herdr.stop(tab, inScope);
+						await herdrFor(tab.cwd ?? ctx.cwd).stop(tab, inScope);
 					})();
 					stopProofs.set(entryId, proof);
 					return proof;
@@ -805,7 +829,7 @@ export default function subagentExtension(pi: ExtensionAPI): void {
 				const inScope = () => current() && (local.closeScope?.() ?? true);
 				try {
 					if (local.allocation) throw new Error(local.allocation.failure);
-					for (const tab of tabs) await herdr.stop(tab, inScope);
+					for (const tab of tabs) await herdrFor(tab.cwd ?? ctx.cwd).stop(tab, inScope);
 					if (!inScope()) throw new Error("Direct task scope changed; reopen /subagent.");
 					releaseAdmission();
 					directTasks.delete(taskId);
@@ -831,10 +855,10 @@ export default function subagentExtension(pi: ExtensionAPI): void {
 				startWidgetItem(entry.id, taskId, display, prepared.model.id, prepared.thinkingLevel, ctx);
 				const transient = await materializeTransientLaunch({ launch: prepared, prompt: prepared.systemPrompt,
 					promptArgIndex: prepared.promptArgIndex }, activeSignal);
-				snapshots.set(entry.id, await snapshotCheckout(ctx.cwd).catch((error: unknown) => error instanceof Error ? error : new Error(String(error))));
+				snapshots.set(entry.id, await snapshotCheckout(entryCwd(entry.index)).catch((error: unknown) => error instanceof Error ? error : new Error(String(error))));
 				let handle: DirectHandle;
 				try {
-					handle = await herdr.start({ ...prepared, args: [...transient.launch.args] },
+					handle = await herdrFor(targets[entry.index]!).start({ ...prepared, args: [...transient.launch.args] },
 						`d-${randomUUID().replaceAll("-", "").slice(0, 24)}`, `${directRef(display)} ${display.title}`,
 						`${entry.delegation.access === "read" ? `${entry.delegation.task}\n\n${READ_ACCESS_NOTICE}` : entry.delegation.task}\n\nFinal answer budget: ${answerBytes} bytes, conclusions first. Main sees only that much inline; a longer answer is saved to a file.`, activeSignal, (tab) => {
 							const record = { taskId, entryId: entry.id, display, ...tab };
@@ -867,7 +891,7 @@ export default function subagentExtension(pi: ExtensionAPI): void {
 					try {
 						await assertSettledDirectSession(source.sessionFile, source.turn);
 						// Close only an idle or done exact agent; an absent one still needs two empty lease scans.
-						await herdr.stop(source, () => launchEpoch === sessionEpoch && !controller.signal.aborted, true);
+						await herdrFor(targets[index]!).stop(source, () => launchEpoch === sessionEpoch && !controller.signal.aborted, true);
 					} catch (error) {
 						throw new Error(`Cannot continue ${workflow.delegations[index]!.continueFrom}: ${error instanceof Error ? error.message : String(error)}.`, { cause: error });
 					}

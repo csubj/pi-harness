@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="660" viewBox="0 0 1280 660" role="img" aria-labelledby="extension-dependencies-title extension-dependencies-desc" id="extension-dependencies-root">
   <title id="extension-dependencies-title">Direct dependencies of 18 active Pi extensions</title>
-  <desc id="extension-dependencies-desc">Matrix of 18 active Pi extensions and eight internal dependency packages, with 27 direct runtime or peer dependency edges, five rows with no internal dependencies, and Pi Config Store used by 12 extensions.</desc>
+  <desc id="extension-dependencies-desc">Matrix of 18 active Pi extensions and eight internal dependency packages, with 28 direct runtime or peer dependency edges, five rows with no internal dependencies, and Pi Config Store used by 12 extensions.</desc>
   <defs>
       <style>@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&amp;family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500;600&amp;family=Noto+Serif:ital@0;1&amp;family=Noto+Sans+KR:wght@400;500;600&amp;family=Noto+Serif+KR:wght@400&amp;family=Noto+Sans+TC:wght@400;500;600&amp;family=Noto+Serif+TC:wght@400&amp;display=swap');
       #extension-dependencies-root { color: #101828; font-family: 'Geist', sans-serif; }
@@ -35,7 +35,7 @@
   <text class="column" x="576" y="108">Pi Process</text>
   <text class="count" data-package="@hcflabs/pi-process" data-count="1" x="576" y="140">1 in</text>
   <text class="column" x="688" y="108">Pi Repo</text>
-  <text class="count" data-package="@hcflabs/pi-repo" data-count="1" x="688" y="140">1 in</text>
+  <text class="count" data-package="@hcflabs/pi-repo" data-count="2" x="688" y="140">2 in</text>
   <text class="column" x="800" y="108">Pi Task</text>
   <text class="column" x="800" y="124">Models</text>
   <text class="count" data-package="@hcflabs/pi-task-models" data-count="7" x="800" y="140">7 in</text>
@@ -110,6 +110,7 @@
   <rect data-extension="pi-subagent" data-dependency="@hcflabs/pi-config-store" x="346" y="469" width="12" height="12" rx="2" fill="#101828"/>
   <rect data-extension="pi-subagent" data-dependency="@hcflabs/pi-herdr" x="458" y="469" width="12" height="12" rx="2" fill="#101828"/>
   <rect data-extension="pi-subagent" data-dependency="@hcflabs/pi-process" x="570" y="469" width="12" height="12" rx="2" fill="#101828"/>
+  <rect data-extension="pi-subagent" data-dependency="@hcflabs/pi-repo" x="682" y="469" width="12" height="12" rx="2" fill="#101828"/>
   <rect data-extension="pi-subagent" data-dependency="@hcflabs/pi-task-models" x="794" y="469" width="12" height="12" rx="2" fill="#101828"/>
   <rect data-extension="pi-subagent" data-dependency="@hcflabs/pi-multi-codex" x="1018" y="469" width="12" height="12" rx="2" fill="#101828"/>
   <rect x="40" y="484" width="1152" height="20" fill="#e6e4de" fill-opacity=".6"/>
@@ -117,7 +118,7 @@
   <rect data-extension="pi-task-models" data-dependency="@hcflabs/pi-config-store" x="346" y="489" width="12" height="12" rx="2" fill="#101828"/>
   <text class="name" data-row="pi-undo" x="48" y="518">Pi Undo</text>
   <text class="empty" x="244" y="517">none</text>
-  <text class="note" x="48" y="548">18 extensions · 27 direct edges · 8 dependency packages · 5 rows with no internal dependencies</text>
+  <text class="note" x="48" y="548">18 extensions · 28 direct edges · 8 dependency packages · 5 rows with no internal dependencies</text>
   <text class="note" x="48" y="568">Only dependencies and peerDependencies are shown; development and transitive dependencies are excluded.</text>
   <line x1="48" y1="588" x2="1192" y2="588" stroke="#101828" stroke-opacity=".12"/>
   <rect x="48" y="612" width="12" height="12" rx="2" fill="#101828"/>

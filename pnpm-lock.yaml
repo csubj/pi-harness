@@ -265,6 +265,9 @@ importers:
       '@hcflabs/pi-process':
         specifier: ^0.2.0
         version: link:../../packages/pi-process
+      '@hcflabs/pi-repo':
+        specifier: ^0.1.0
+        version: link:../../packages/pi-repo
       '@hcflabs/pi-task-models':
         specifier: ^9.0.0
         version: link:../pi-task-models

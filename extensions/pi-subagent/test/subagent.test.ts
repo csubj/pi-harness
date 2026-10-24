@@ -522,12 +522,14 @@ function fakeHerdr(cwd: string, answer: (prompt: string) => string | undefined |
 	const calls: string[][] = [];
 	const closed = new Set<string>();
 	let probeToken = "";
-	const sessions = new Map<string, { path: string; prompt?: string; pane: string; tab: string }>();
+	const sessions = new Map<string, { path: string; prompt?: string; pane: string; tab: string; cwd: string }>();
+	// Each tab keeps the --cwd that created it, so Repository targets keep their own agent identity.
+	const paneCwd = new Map<string, string>();
 	let next = 1;
 	const response = (result: any) => ({ code: 0, stdout: JSON.stringify({ id: "mock", result }), stderr: "" });
 	const agent = (name: string, status: string) => {
 		const identity = sessions.get(name)!;
-		return { name, agent: "pi", agent_status: status, cwd, interactive_ready: true,
+		return { name, agent: "pi", agent_status: status, cwd: identity.cwd, interactive_ready: true,
 			pane_id: identity.pane, tab_id: identity.tab, workspace_id: "w-test" };
 	};
 	const persist = async (name: string) => {
@@ -547,8 +549,10 @@ function fakeHerdr(cwd: string, answer: (prompt: string) => string | undefined |
 			if (args[0] === "pane" && args[1] === "current") return response({ type: "pane_current", pane: { pane_id: "w-test:p1", workspace_id: "w-test" } });
 			if (args[0] === "tab" && args[1] === "create") {
 				const tab = `w-test:t${++next}`;
+				const tabCwd = args.includes("--cwd") ? args[args.indexOf("--cwd") + 1]! : cwd;
+				paneCwd.set(`w-test:p${next}`, tabCwd);
 				return response({ type: "tab_created", tab: { tab_id: tab, workspace_id: "w-test", focused: false },
-					root_pane: { pane_id: `w-test:p${next}`, tab_id: tab, workspace_id: "w-test", cwd, focused: false } });
+					root_pane: { pane_id: `w-test:p${next}`, tab_id: tab, workspace_id: "w-test", cwd: tabCwd, focused: false } });
 			}
 			if (args[0] === "agent" && args[1] === "list") return response({ type: "agent_list", agents: [...sessions.keys()].filter((name) => !closed.has(sessions.get(name)!.pane)).map((name) => agent(name, "done")) });
 			if (args[0] === "pane" && args[1] === "list") return response({ type: "pane_list", panes: [...sessions.keys()].filter((name) => !closed.has(sessions.get(name)!.pane)).map((name) => agent(name, "done")) });
@@ -563,7 +567,7 @@ function fakeHerdr(cwd: string, answer: (prompt: string) => string | undefined |
 				const name = args[2]!;
 				const pane = args[args.indexOf("--pane") + 1]!;
 				const path = args[args.indexOf("--session") + 1]!;
-				sessions.set(name, { path, pane, tab: `w-test:t${next}` });
+				sessions.set(name, { path, pane, tab: `w-test:t${next}`, cwd: paneCwd.get(pane) ?? cwd });
 				return response({ type: "agent_started", agent: agent(name, "idle") });
 			}
 			if (args[0] === "agent" && args[1] === "prompt") {
@@ -1878,7 +1882,7 @@ test("continueFrom refuses owned, unknown, mismatched, working, unsettled, legac
 			await refuse({ continueFrom: "D5.1" }, /no turn identity .*not continuable/);
 			app.sessionEntries.push({ type: "custom", customType: "subagent-direct-tab", data: {
 				...source, cwd: "/elsewhere", taskId: "elsewhere", tabId: "t-elsewhere", display: { ...source.display, workflow: 6 } } });
-			await refuse({ continueFrom: "D6.1" }, /ran in \/elsewhere .*not this checkout and workspace/);
+			await refuse({ continueFrom: "D6.1" }, /ran in \/elsewhere .*not in .* and this workspace; select the repo where it ran/);
 			await rm(source.sessionFile);
 			await refuse({ continueFrom: "D1.1" }, /missing or unreadable/);
 		});
@@ -2014,5 +2018,76 @@ test("bad config never stops the extension: launch warns on a typo, and invalid 
 		await writeFile(path, JSON.stringify({ maxTokens: 1_000 }));
 		await assert.rejects(() => launchedDisabled.tool.execute("repaired", { role: "scout", name: "Repaired", task: "inspect", access: "read" }, undefined, undefined, launchedDisabled.ctx),
 			/was disabled when the session started; run \/reload/);
+	});
+});
+
+test("admission from a non-Git parent reserves each child checkout and treats Main calls as the whole subtree", async (t) => {
+	const parent = await realpath(await mkdtemp(join(tmpdir(), "pi-subagent-parent-")));
+	t.after(() => rm(parent, { recursive: true, force: true }));
+	const children = { a: join(parent, "team", "a"), b: join(parent, "team", "b") };
+	for (const child of Object.values(children)) await mkdir(join(child, ".git"), { recursive: true });
+	const handlers = new Map<string, (...args: any[]) => any>();
+	const hold = registerCheckoutAdmission({
+		on(event: string, handler: (...args: any[]) => any) { handlers.set(event, handler); },
+		exec: async (_command: string, _args: string[], options: { cwd: string }) => {
+			const root = Object.values(children).find((child) => options.cwd === child || options.cwd.startsWith(`${child}/`));
+			return root ? { stdout: `${root}\n`, stderr: "", code: 0, killed: false } : { stdout: "", stderr: "fatal: not a git repository", code: 128, killed: false };
+		},
+	} as unknown as ExtensionAPI, (input) => (input as { repos?: Array<string | undefined> }).repos ?? false);
+	const call = (toolCallId: string, toolName: string, input: Record<string, unknown> = {}) =>
+		handlers.get("tool_call")!({ toolCallId, toolName, input }, { cwd: parent });
+	const end = (toolCallId: string) => handlers.get("tool_result")!({ toolCallId });
+
+	// Writers in different child repositories run at the same time.
+	assert.equal(await call("a", "delegate_task", { repos: ["team/a"] }), undefined);
+	assert.equal(await call("b", "delegate_task", { repos: ["team/b", "team/b"] }), undefined);
+	const releaseA = hold("a");
+	const releaseB = hold("b");
+	assertAdmissionBlocked(await call("a2", "delegate_task", { repos: ["team/a"] }), "a");
+	// An unscoped Main call in the parent covers every child checkout.
+	assertAdmissionBlocked(await call("edit", "edit"), "a");
+	assert.equal(await call("repos", "subagent_repos"), undefined);
+	releaseA();
+	assertAdmissionBlocked(await call("bash", "bash"), "b");
+	releaseB();
+	assert.equal(await call("bash", "bash"), undefined);
+	// A direct writer waits for a Main call in flight in its parent.
+	assertAdmissionBlocked(await call("b2", "delegate_task", { repos: ["team/b"] }), "bash");
+	end("bash");
+	assert.equal(await call("b2", "delegate_task", { repos: ["team/b"] }), undefined);
+	const invalid = await call("bad", "delegate_task", { repos: ["team"] }) as { block: boolean; reason: string };
+	assert.equal(invalid.block, true);
+	assert.match(invalid.reason, /Repository target check failed: .*team/);
+});
+
+test("direct repo opens the worker tab in the child repository and labels its result", async () => {
+	await environment(async (agentDir) => {
+		await writeWorkerRole(agentDir);
+		await herdrEnvironment(async () => {
+			const parent = await realpath(await mkdtemp(join(tmpdir(), "pi-subagent-direct-parent-")));
+			try {
+				const child = join(parent, "team", "service");
+				await mkdir(child, { recursive: true });
+				execFileSync("git", ["init", "-q", child]);
+				const fake = fakeHerdr(parent, () => "exact answer");
+				const app = harness({ cwd: parent, herdr: fake.exec });
+				app.handlers.get("session_start")?.({}, app.ctx);
+				const task = { role: "worker", name: "Check", task: "inspect", access: "read" as const };
+
+				await assert.rejects(app.tool.execute("bad", { ...task, repo: "team" }, undefined, undefined, app.ctx), /Task 1 repo team: .*not in a Git repository/);
+				assert.equal(fake.calls.some((args) => args[0] === "tab"), false);
+
+				const dry = await app.tool.execute("dry", { ...task, repo: "team/service", dryRun: true }, undefined, undefined, app.ctx);
+				assert.match(dry.content[0].text, new RegExp(`access read · repo team/service \\(${child.replaceAll("/", "\\/")}\\)`));
+
+				await app.tool.execute("call", { ...task, repo: "team/service" }, undefined, undefined, app.ctx);
+				const create = fake.calls.find((args) => args[0] === "tab" && args[1] === "create")!;
+				assert.equal(create[create.indexOf("--cwd") + 1], child);
+				await waitFor(() => app.sentMessages.length === 1);
+				assert.match(app.sentMessages[0]!.message.content, /Check · repo team\/service · worker/);
+			} finally {
+				await rm(parent, { recursive: true, force: true });
+			}
+		});
 	});
 });
