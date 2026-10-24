@@ -33,7 +33,15 @@ for manifest in extensions/*/package.json packages/*/package.json; do
   [[ "$(node -p "Boolean(require('./$manifest').private)")" == true ]] && continue
 
   package="$(node -p "require('./$manifest').name")"
+  # npm cannot attach trust to a package that does not exist. Publish the first version by hand.
+  if ! npm_latest view "$package" version >/dev/null 2>&1; then
+    echo "MISSING $package: not on npm or not readable. Publish the first version first (docs/releasing.md#first-publication-checklist)." >&2
+    mismatches=$((mismatches + 1))
+    continue
+  fi
   trust="$(npm_latest trust list "$package" --json)"
+  # npm prints nothing when a package has no trust configuration.
+  [[ -n "$trust" ]] || trust="[]"
   id="$(trust_field "$trust" id)"
   type="$(trust_field "$trust" type)"
   current_repository="$(trust_field "$trust" repository)"

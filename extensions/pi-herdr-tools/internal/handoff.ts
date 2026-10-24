@@ -1,5 +1,6 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { createHerdrClient, herdrCommandFailure } from "@hcflabs/pi-herdr";
+import { resolveRepoTarget } from "@hcflabs/pi-repo";
 import { Type } from "typebox";
 import {
 	createWorktree,
@@ -24,6 +25,9 @@ const HandoffParams = Type.Object({
 		pattern: "^[a-z][a-z0-9_-]{0,31}$",
 	}),
 	prompt: nonEmpty("Self-contained task prompt for the new agent"),
+	repo: Type.Optional(nonEmpty(
+		"Child Git repository for the worktree, as a path relative to the Pi working directory. Omit it to use the repository of the current Herdr workspace.",
+	)),
 });
 
 /** Register `herdr_handoff` only inside Herdr, where it can run. */
@@ -37,39 +41,59 @@ export default function herdrHandoffExtension(pi: ExtensionAPI): void {
 		description: "Create a Herdr worktree from local main, start Pi in it, and submit a self-contained task prompt. Focus does not change.",
 		promptSnippet: "Hand off a separate task to a new Pi agent in a new Herdr worktree from local main",
 		promptGuidelines: [
-			"Use herdr_handoff only when the user asks to hand off a task to a new worktree, for example through /handoff-worktree.",
+			"Use herdr_handoff for a separate task that the user authorized, for example through /handoff-worktree. A handoff has no checked integration: the new agent works unsupervised.",
+			"When the Pi working directory holds several repositories, set repo to the child repository of the task. herdr_handoff never selects a repository automatically.",
 		],
 		parameters: HandoffParams,
 		executionMode: "sequential",
 
-		async execute(_toolCallId, { branch, label, agentName, prompt }, signal, _onUpdate, ctx) {
+		async execute(_toolCallId, { branch, label, agentName, prompt, repo }, signal, _onUpdate, ctx) {
 			const paneId = requiredString(process.env.HERDR_PANE_ID, "HERDR_PANE_ID");
-			const workspace = await resolveWorkspace(herdr, ctx.cwd, paneId);
-			const checkout = requiredString(workspace.checkout, `Git checkout of Herdr workspace ${workspace.workspaceId}`);
 			const git = (cwd: string, args: string[]) => pi.exec("git", args, { cwd });
-			const repository = async (cwd: string) => {
-				const result = await git(cwd, ["rev-parse", "--path-format=absolute", "--git-common-dir"]);
-				if (result.code !== 0 || result.killed) throw new Error(`herdr_handoff: ${cwd} is not in a Git repository; nothing was created.`);
-				return result.stdout.trim();
-			};
-			// The worktree comes from the pane's workspace, so it must be the repository checked here.
-			if (await repository(ctx.cwd) !== await repository(checkout)) {
-				throw new Error(`herdr_handoff: ${ctx.cwd} and Herdr workspace ${workspace.workspaceId} (${checkout}) are different Git repositories; nothing was created.`);
+			let gitCwd: string;
+			let location: string[];
+			if (repo === undefined) {
+				const workspace = await resolveWorkspace(herdr, ctx.cwd, paneId);
+				if (!workspace.checkout) {
+					throw new Error(
+						`herdr_handoff: Herdr workspace ${workspace.workspaceId} has no Git checkout. Set repo to a child repository relative to ${ctx.cwd}; nothing was created.`,
+					);
+				}
+				const repository = async (cwd: string) => {
+					const result = await git(cwd, ["rev-parse", "--path-format=absolute", "--git-common-dir"]);
+					if (result.code !== 0 || result.killed) throw new Error(`herdr_handoff: ${cwd} is not in a Git repository; nothing was created.`);
+					return result.stdout.trim();
+				};
+				// The worktree comes from the pane's workspace, so it must be the repository checked here.
+				if (await repository(ctx.cwd) !== await repository(workspace.checkout)) {
+					throw new Error(`herdr_handoff: ${ctx.cwd} and Herdr workspace ${workspace.workspaceId} (${workspace.checkout}) are different Git repositories; nothing was created.`);
+				}
+				gitCwd = ctx.cwd;
+				location = ["--workspace", await worktreeParentWorkspace(herdr, ctx.cwd, workspace)];
+			} else {
+				// Herdr opens or creates the repository's primary workspace when it gets --cwd.
+				const target = await resolveRepoTarget(ctx.cwd, repo, {
+					signal,
+					runProcess: (command, args, options) => pi.exec(command, args, { cwd: options.cwd, signal: options.signal, timeout: options.timeoutMs ?? undefined }),
+				}).catch((error: unknown) => {
+					throw new Error(`herdr_handoff: ${errorMessage(error)} Nothing was created.`, { cause: error });
+				});
+				gitCwd = target.root;
+				location = ["--cwd", target.root];
 			}
-			const main = await git(ctx.cwd, ["rev-parse", "--verify", "--quiet", "refs/heads/main"]);
+			const main = await git(gitCwd, ["rev-parse", "--verify", "--quiet", "refs/heads/main"]);
 			if (main.code !== 0 || main.killed) {
-				throw new Error(`herdr_handoff requires a local main branch in ${ctx.cwd}; nothing was created.`);
+				throw new Error(`herdr_handoff requires a local main branch in ${gitCwd}; nothing was created.`);
 			}
 			// Herdr checks out an existing branch instead of creating it from --base.
-			const existing = await git(ctx.cwd, ["show-ref", "--verify", "--quiet", `refs/heads/${branch}`]);
+			const existing = await git(gitCwd, ["show-ref", "--verify", "--quiet", `refs/heads/${branch}`]);
 			if (existing.code !== 1 || existing.killed) {
 				throw new Error(`herdr_handoff: branch ${branch} already exists or could not be checked; choose a new branch. Nothing was created.`);
 			}
-			const parentId = await worktreeParentWorkspace(herdr, ctx.cwd, workspace);
 
 			signal?.throwIfAborted();
 			const worktree = await createWorktree(herdr, ctx.cwd, [
-				"worktree", "create", "--workspace", parentId,
+				"worktree", "create", ...location,
 				"--branch", branch, "--base", "main", "--label", label, "--no-focus",
 			], "Handoff");
 			const { workspaceId, checkoutPath } = worktree;
@@ -95,7 +119,7 @@ export default function herdrHandoffExtension(pi: ExtensionAPI): void {
 				);
 			}
 
-			const details = { workspaceId, tabId: target.tabId, paneId: target.paneId, branch, checkoutPath, agentName };
+			const details = { workspaceId, tabId: target.tabId, paneId: target.paneId, branch, checkoutPath, agentName, ...(repo === undefined ? {} : { repo }) };
 			return {
 				content: [{
 					type: "text" as const,
